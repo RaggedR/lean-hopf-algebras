@@ -145,17 +145,13 @@ For sequences of binomial type, the proofs are **combinatorial** rather than alg
 ## What needs doing next
 
 ### Immediate: Monitor PR #39410
-- CI fix has been pushed; watch for new CI results
+- CI fix pushed (commit `1980b82`): added `public section` and removed unused simp args
+- The two CI issues were: `linter.privateModule` (Lean 4.30.0 defaults to private) and `linter.unusedSimpArgs` (deprecated `AlgEquiv.toAlgHom_eq_coe` + unused `AlgHom.coe_coe`, `Algebra.TensorProduct.assoc_tmul`)
 - Be prepared to split into 3 files if reviewers request it
 - Introduce yourself on Zulip (the welcome bot suggested this)
 
-### Next: Prove descPochhammer_isBinomialType (remove sorry)
-The proof strategy is documented in BinomialType.lean. Key steps:
-- Induction on n using `descPochhammer_succ_right`
-- Distribute `Δ(X - n)` over the IH sum via `Bialgebra.comul_mul`
-- Use `descPochhammer_succ_right` on each tensor factor
-- Reindex and apply Pascal's rule `C(n,k-1) + C(n,k) = C(n+1,k)`
-- **Challenge**: Finset sum manipulation in Lean (index shifting, boundary terms)
+### DONE: descPochhammer_isBinomialType (sorry removed)
+Proved by induction on n. The key insight was `summand_identity`: constant polynomials move freely between tensor factors via `TensorProduct.smul_tmul`, so the cross-terms `(↑x - ↑n) • p_x ⊗ q + p_x ⊗ ↑(n-x) • q` cancel via `Nat.cast_sub` + `add_smul`. Pascal's rule (`Nat.choose_succ_succ'`) + `Finset.sum_range_succ'` handle the reindexing. **No more `sorry` in the project.**
 
 ### NEXT: Umbral operators (thesis §1.2.2, lines 871-932)
 
@@ -198,7 +194,6 @@ The duality framework (Duality.lean) is now in place. The next step is defining 
 - Stirling numbers as change-of-basis coefficients
 
 ### Deferred
-- `descPochhammer_isBinomialType` sorry (induction + Pascal's rule, fiddly)
 - `IsPrimitiveElem R a` Mathlib PR (dual to `IsGroupLikeElem`)
 - Symmetric functions lift (thesis §1.3)
 
@@ -214,6 +209,29 @@ The extracted thesis is at `thesis-tex/thesis.tex`:
 - **§1.3 "Umbral operators" on Λ** (line 1343): lifting to symmetric functions
 
 Also: Robin's thesis directory has Steven Roman's "The Umbral Calculus" book at `~/git/thesis/phD/Steven Roman - The Umbral Calculus (Pure and Applied Mathematics 111) (1984).pdf`.
+
+## The "cross-term cancellation" proof technique (NEW — session 2)
+
+For proving the `descPochhammer_isBinomialType` (Vandermonde identity), the cross-terms
+cancel via scalar movement in the tensor product:
+
+1. **`descPochhammer_mul_X_sub`** / **`descPochhammer_mul_X`**: decompose `p_k * (X - ↑n)` and `p_m * X` using `descPochhammer_succ_right` + `ring`.
+2. **`add_tmul`** / **`tmul_add`**: expand tensor products over addition.
+3. **`smul_eq_C_mul`** (← direction): convert constant polynomial multiplication `C(r) * p` to scalar `r • p`. Need `have hC : ∀ m, (↑m : R[X]) = C (↑m : R) := by intro m; simp`.
+4. **`TensorProduct.smul_tmul`**: `(r • m) ⊗ₜ n = m ⊗ₜ (r • n)` — moves R-scalars between tensor factors.
+5. **`← add_smul`** + **`Nat.cast_sub hx`**: combine `(↑x - ↑n) + ↑(n-x) = 0` in R.
+6. **`zero_smul`** + **`tmul_zero`**: kill the zero term.
+
+Key pain point: `nsmul` (ℕ-scalar multiplication) doesn't play nicely with `simp_rw`. Workaround: use explicit `have` lemmas with `smul_add` and pass them to `simp only`.
+
+For the Pascal recombination:
+1. **`symm`** to work backwards from the RHS.
+2. **`Finset.sum_range_succ'`** to shift all indices by 1 (peels off k=0 boundary).
+3. **`Nat.choose_succ_succ'`** + **`add_smul`** to apply Pascal's rule pointwise.
+4. **`Finset.sum_add_distrib`** to split into two sums.
+5. **`congr 1`** + **`add_assoc`** to match the first sum and isolate the second.
+6. **`Finset.sum_range_succ`** to peel off the k=n+1 term, then **`Nat.choose_eq_zero_of_lt`** to kill it.
+7. **`conv_rhs => rw [Finset.sum_range_succ']`** to reindex the other side to match.
 
 ## Lean patterns learned
 
