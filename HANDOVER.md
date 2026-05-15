@@ -25,6 +25,7 @@ Robin has a new job (as of 2026-05-15) that requires using Lean. He has deep mat
 │   ├── Umbral.lean        # Development file: full Hopf algebra on R[X] + primitives
 │   ├── BinomialType.lean  # Sequences of binomial type + coalgebra endomorphism theorem
 │   ├── Duality.lean       # R[X] / R⟦X⟧ duality via Hasse derivatives
+│   ├── DeltaOperator.lean # Delta operators, forward diff, basic sequences
 │   └── Polynomial.lean    # PR-ready file: clean Mathlib-style version
 ├── thesis-tex/            # Extracted from arXiv-0907.3950v2.tar.gz
 │   └── thesis.tex         # Robin's masters thesis (the umbral calculus source)
@@ -32,7 +33,7 @@ Robin has a new job (as of 2026-05-15) that requires using Lean. He has deep mat
 └── .lake/                 # Build artifacts + Mathlib source
 ```
 
-All files build clean: `lake build HopfAlgebras` succeeds (one expected `sorry` warning in BinomialType.lean).
+All files build clean: `lake build HopfAlgebras` succeeds (one expected `sorry` warning in DeltaOperator.lean — Rota's classification theorem, deferred pending Lagrange inversion).
 
 ## What's formalized (COMPLETED)
 
@@ -56,7 +57,7 @@ All files build clean: `lake build HopfAlgebras` succeeds (one expected `sorry` 
 | `IsBinomialType.comul_zero` | BinomialType.lean | DONE — p₀ is group-like |
 | `IsBinomialType.comp_coalgebraHom` | BinomialType.lean | DONE — coalgebra endomorphisms preserve binomial type |
 | `IsBinomialType.of_coalgebraHom` | BinomialType.lean | DONE — corollary: n ↦ φ(Xⁿ) is binomial type |
-| `descPochhammer_isBinomialType` | BinomialType.lean | SORRY — falling factorials, proof strategy documented |
+| `descPochhammer_isBinomialType` | BinomialType.lean | DONE — Vandermonde via induction + cross-term cancellation |
 
 ### R[X] / R⟦X⟧ duality
 
@@ -98,6 +99,22 @@ All files build clean: `lake build HopfAlgebras` succeeds (one expected `sorry` 
 - `descPochhammer R : ℕ → R[X]` — falling factorial polynomials
 - `Nat.add_choose_eq` — Vandermonde's identity for binomial coefficients
 
+### Power series infrastructure (EXISTS — needed for Lagrange inversion)
+- `PowerSeries.subst (a : R⟦X⟧) (f : R⟦X⟧) : R⟦X⟧` — substitution, at `Mathlib.RingTheory.PowerSeries.Substitution`
+- `PowerSeries.HasSubst (a : R⟦X⟧) : Prop` — `IsNilpotent (constantCoeff a)` (univariate case)
+- `PowerSeries.substAlgHom (ha : HasSubst a) : R⟦X⟧ →ₐ[R] R⟦X⟧` — algebra hom version
+- `subst_comp_subst_apply` — `subst b (subst a f) = subst (subst b a) f` (associativity)
+- `subst_X (ha : HasSubst a) : subst a X = a` — substituting into X gives a
+- `subst_self : subst X = id` — identity substitution
+- `PowerSeries.rescale (a : R) : R⟦X⟧ →+* R⟦X⟧` — scales coefficient n by a^n
+- `PowerSeries.invOfUnit` — multiplicative inverse (NOT compositional), at `PowerSeries.Inverse`
+- `PowerSeries.derivative` + chain rule `d/dX(f.subst g) = (d/dX f).subst g * d/dX g`
+- `PowerSeries.mk (f : ℕ → R) : R⟦X⟧` — construct from coefficient function
+- `PowerSeries.coeff (n : ℕ) : R⟦X⟧ →ₗ[R] R` — extract coefficient
+- `PowerSeries.constantCoeff : R⟦X⟧ →+* R` — extract constant term (ring hom)
+- **Key fact**: `HasSubst a` holds whenever `constantCoeff a = 0` (since `0` is nilpotent)
+- **NO compositional inverse** — `∃ g, subst g f = X` is NOT proved for any f
+
 ### What does NOT exist in Mathlib (opportunity)
 - **Primitive elements** — no `IsPrimitive` predicate (only `IsGroupLikeElem`)
 - **Sequences of binomial type** — no `IsBinomialType`
@@ -131,7 +148,21 @@ The key technique discovered in session 1: coalgebra/Hopf axioms are equalities 
 
 6. **`simp`** closes the X computation (sometimes with `abel` for addition reassociation).
 
-## The "binomial theorem" proof technique (NEW)
+## The "shift-equivariance" proof technique (NEW — session 3)
+
+For proving Hasse derivatives are shift-equivariant (commute with Taylor shift):
+
+1. **`LinearMap.ext`** + **`Polynomial.ext`** to reduce to coefficient-by-coefficient equality.
+2. **`hasseDeriv_coeff`** + **`taylor_coeff`**: LHS gives `↑C(n+k,k) * (hasseDeriv (n+k) p).eval a`.
+3. **`← LinearMap.comp_apply`** + **`hasseDeriv_comp`** + **`LinearMap.smul_apply`**: unfold RHS composition.
+4. **`eval_smul`** + **`nsmul_eq_mul`**: push eval through ℕ-scalar mult.
+5. **`congrArg Nat.cast`** + **`Nat.choose_symm_of_eq_add`**: bridge ℕ binomial symmetry to R.
+
+Key pain point: `n + 1` vs `1 + n` normalization in ℕ is unpredictable across `rw`/`simp`. The `calc` idiom avoids this: `a = (a - b) + b = c + b = b + c` never puts both forms in one hypothesis.
+
+The `nsmul` ↔ `C` bridge: `nsmul_eq_mul → ← C_eq_natCast → Nat.cast_succ → map_add → map_one`.
+
+## The "binomial theorem" proof technique (session 2)
 
 For sequences of binomial type, the proofs are **combinatorial** rather than algebra-hom-extensionality:
 
@@ -153,40 +184,46 @@ For sequences of binomial type, the proofs are **combinatorial** rather than alg
 ### DONE: descPochhammer_isBinomialType (sorry removed)
 Proved by induction on n. The key insight was `summand_identity`: constant polynomials move freely between tensor factors via `TensorProduct.smul_tmul`, so the cross-terms `(↑x - ↑n) • p_x ⊗ q + p_x ⊗ ↑(n-x) • q` cancel via `Nat.cast_sub` + `add_smul`. Pascal's rule (`Nat.choose_succ_succ'`) + `Finset.sum_range_succ'` handle the reindexing. **No more `sorry` in the project.**
 
-### NEXT: Umbral operators (thesis §1.2.2, lines 871-932)
+### DONE: Delta operators (DeltaOperator.lean)
 
-The duality framework (Duality.lean) is now in place. The next step is defining umbral operators.
+Formalized the polynomial-side theory of the umbral calculus:
 
-**What we have to build on:**
-- `CoalgHom R R[X] R[X]` — Mathlib's bundled coalgebra homs (`Mathlib.RingTheory.Coalgebra.Hom`)
-- `comp_coalgebraHom` — coalgebra endomorphisms preserve binomial type (BinomialType.lean)
-- `hasseDeriv_eval_zero` — the Hasse derivative bridges R[X] and R⟦X⟧ (Duality.lean)
+| Definition/Theorem | File | Status |
+|-------------------|------|--------|
+| `IsShiftEquivariant Q` | DeltaOperator.lean | DONE — Q commutes with taylor a |
+| `hasseDeriv_isShiftEquivariant` | DeltaOperator.lean | DONE — coefficient-level proof via hasseDeriv_comp + choose_symm |
+| `isShiftEquivariant_comp` | DeltaOperator.lean | DONE |
+| `isShiftEquivariant_add` | DeltaOperator.lean | DONE |
+| `IsDeltaOperator Q` | DeltaOperator.lean | DONE — shift-equiv + kills constants + unit leading |
+| `derivative_isDeltaOperator` | DeltaOperator.lean | DONE |
+| `forwardDiff a` | DeltaOperator.lean | DONE — E_a - I |
+| `forwardDiff_isDeltaOperator` | DeltaOperator.lean | DONE — when IsUnit a |
+| `IsBasicSequence Q p` | DeltaOperator.lean | DONE — lowering + normalized + zero_one |
+| `X_pow_isBasicSequence` | DeltaOperator.lean | DONE — monomials basic for derivative |
+| `descPochhammer_isBasicSequence_forwardDiff` | DeltaOperator.lean | DONE — falling factorials basic for Δ₁ |
+| `IsBasicSequence.isBinomialType` | DeltaOperator.lean | SORRY — Rota's classification |
 
-**Two approaches (pick one):**
+### NEXT: Lagrange inversion / compositional inverse (BLOCKS THE SORRY)
 
-**(A) Properties-first (thesis Prop, line 892):** Define U_f by its characterising properties:
-  - `D ∘ U_f = U_f ∘ g(D)` where g is compositional inverse of a delta series f
-  - `L ∘ U_f = L` where L = eval 0 (= coalgebra counit)
-  - Show U_f is a coalgebra endomorphism, hence images are binomial type
-  - Needs: `PowerSeries.comp` for formal composition, compositional inverses
-  - Pro: follows thesis exactly. Con: needs formal composition infrastructure
+The `sorry` in `IsBasicSequence.isBinomialType` is the bridge between the polynomial side (delta operators) and the power series side (duality). Robin's thesis (lines 868-873) crosses this bridge via: delta series f → substitution algebra hom φ_f on R⟦X⟧ → adjoint U_f = coalgebra hom on R[X] → apply `comp_coalgebraHom` (already proved!). **Once we have compositional inverses, the sorry becomes trivial.**
 
-**(B) Action-first:** Define U_f by its action on the divided power basis:
-  - `U_f(X^n/n!) = p_n` where {p_n} is the convolution-type sequence dual to {g(y)^k}
-  - Or more concretely: define U_f as a linear map R[X] → R[X] via its matrix (Jabotinsky matrix)
-  - Show it's a coalgebra endomorphism using `comp_coalgebraHom`
-  - Pro: avoids formal composition. Con: more combinatorial, less conceptual
+An alternative proof via the coderivation property `(Q ⊗ id) ∘ Δ = Δ ∘ Q` was investigated but requires tensor product ext lemmas + `[Infinite R]` and is harder than the duality approach.
 
-**What's needed from Mathlib for either approach:**
-- `PowerSeries.comp` or `PowerSeries.subst` — formal composition f(g(y))
-- `PowerSeries.inv` or compositional inverse — g(y) such that f(g(y)) = y
-- These exist but require topological/nilpotency assumptions (`HasSubst`, `HasEval`)
+**Situation**: Lagrange inversion is a known gap in Mathlib (tracked as Q544292 in 1000.yaml, no declaration). The substitution infrastructure exists (`PowerSeries.subst`, `substAlgHom`, `subst_comp_subst`, chain rule) but no compositional inverse.
 
-**Recommended scope for next session:**
-1. Define a "delta series" predicate: `IsDeltaSeries f` iff `constantCoeff f = 0` and `coeff 1 f` is a unit
-2. Define the umbral operator U_f as a linear map R[X] → R[X]
-3. Prove it's a coalgebra endomorphism (so images are automatically binomial type)
-4. The canonical example: f = X (identity delta series) gives U_X = id
+**Two levels:**
+1. **Existence** (recursive coefficient construction) — only needs `a₁` unit, works over CommRing
+2. **Explicit formula** `[yⁿ] g = (1/n) [yⁿ⁻¹] (y/f(y))ⁿ` — needs CharZero / ℚ-algebra
+
+**Recommended scope:**
+1. Define `IsDeltaSeries f` on `R⟦X⟧`: `constantCoeff f = 0` and `IsUnit (coeff 1 f)`
+2. Construct the compositional inverse `g` by coefficient recursion using `PowerSeries.mk`
+3. Prove `subst g f = X` and `subst f g = X` (formal inverse)
+4. This would be a standalone Mathlib PR (filling a 1000-theorems gap!)
+5. Fill the sorry: construct the umbral operator as adjoint of substAlgHom, apply `comp_coalgebraHom`
+
+**Then connect both sides:**
+- Delta series f ↔ delta operator Q = f(D) ↔ basic sequence {p_n} ↔ umbral operator U
 
 ### After: Specific examples
 - Falling factorials via the umbral operator for f(y) = e^y - 1
@@ -256,6 +293,18 @@ For the Pascal recombination:
 - **`hasseDeriv_mul`**: Leibniz rule `hasseDeriv k (f*g) = Σ_{antidiagonal k} hasseDeriv i f * hasseDeriv j g`
 - **`Polynomial.coeff_coe`**: `PowerSeries.coeff n (φ : R⟦X⟧) = Polynomial.coeff φ n` — bridges the two coefficient functions
 - **`LinearMap.ext`**: use `apply LinearMap.ext; intro p` instead of `ext p` when Lean over-decomposes the polynomial structure
+
+## Lean patterns for power series (for Lagrange inversion)
+
+- `PowerSeries.ext (h : ∀ n, coeff n f = coeff n g) : f = g` — coefficient-wise equality
+- `PowerSeries.mk f` creates a power series from coefficient function `f : ℕ → R`
+- `PowerSeries.coeff_mk n f : coeff n (mk f) = f n` — definitional
+- `constantCoeff` is a ring hom: `map_zero`, `map_one`, `map_mul`, `map_add` all available
+- `HasSubst` for `a` with `constantCoeff a = 0`: use `IsNilpotent.zero` or `isNilpotent_zero`
+- For constructing the compositional inverse by recursion: define `g = PowerSeries.mk (fun n => ...)` where the n-th coefficient is computed from earlier ones. The key is that `coeff n (subst g f)` only depends on `coeff 0 g, ..., coeff n g`, so inductive construction works.
+- **`Nat.strongRecOn`** or **`WellFounded.fix`** for recursive coefficient definitions
+- `Polynomial.coe_def` or `Polynomial.coe` coerces `R[X] → R⟦X⟧`
+- `PowerSeries.X` is the indeterminate, `PowerSeries.C` embeds constants
 
 ## Build command
 ```bash
