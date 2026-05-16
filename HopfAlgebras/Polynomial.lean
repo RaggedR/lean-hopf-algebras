@@ -140,41 +140,40 @@ theorem lTensor_comul_eq :
 
 /-- The `𝔾ₐ` coalgebra instance on `R[X]`: coassociativity holds because both
 `(Δ ⊗ id) ∘ Δ` and `(id ⊗ Δ) ∘ Δ` send `X` to `X⊗1⊗1 + 1⊗X⊗1 + 1⊗1⊗X`. -/
-instance instCoalgebra : Coalgebra R R[X] :=
-  { instCoalgebraStruct R with
-    rTensor_counit_comp_comul := by
-      rw [counit_eq, comul_eq, rTensor_counit_eq, mk_one_eq_includeRight]
-      change ((Algebra.TensorProduct.map (counitAdditiveAlgHom R)
-               (AlgHom.id R R[X])).comp (comulAdditiveAlgHom R)).toLinearMap = _
-      congr 1
-      apply Polynomial.algHom_ext
-      simp [comulAdditiveAlgHom, counitAdditiveAlgHom,
-            Algebra.TensorProduct.map_tmul, Algebra.TensorProduct.includeRight_apply]
-    lTensor_counit_comp_comul := by
-      rw [counit_eq, comul_eq, lTensor_counit_eq, mk_flip_one_eq_includeLeft]
-      change ((Algebra.TensorProduct.map (AlgHom.id R R[X])
-               (counitAdditiveAlgHom R)).comp (comulAdditiveAlgHom R)).toLinearMap = _
-      congr 1
-      apply Polynomial.algHom_ext
-      simp [comulAdditiveAlgHom, counitAdditiveAlgHom,
-            Algebra.TensorProduct.map_tmul, Algebra.TensorProduct.includeLeft_apply]
-    coassoc := by
-      rw [comul_eq, rTensor_comul_eq, lTensor_comul_eq]
-      change ((Algebra.TensorProduct.assoc R R R R[X] R[X] R[X]).toAlgHom.comp
-              ((Algebra.TensorProduct.map (comulAdditiveAlgHom R)
-                (AlgHom.id R R[X])).comp
-               (comulAdditiveAlgHom R))).toLinearMap =
-             ((Algebra.TensorProduct.map (AlgHom.id R R[X])
-               (comulAdditiveAlgHom R)).comp
-              (comulAdditiveAlgHom R)).toLinearMap
-      congr 1
-      apply Polynomial.algHom_ext
-      simp only [comulAdditiveAlgHom, AlgHom.comp_apply, AlgEquiv.toAlgHom_eq_coe,
-            AlgHom.coe_coe, Algebra.TensorProduct.map_tmul, AlgHom.id_apply, aeval_X,
-            map_add, map_one, Algebra.TensorProduct.one_def,
-            Algebra.TensorProduct.assoc_tmul,
-            TensorProduct.add_tmul, TensorProduct.tmul_add]
-      abel }
+instance instCoalgebra : Coalgebra R R[X] where
+  rTensor_counit_comp_comul := by
+    rw [counit_eq, comul_eq, rTensor_counit_eq, mk_one_eq_includeRight]
+    change ((Algebra.TensorProduct.map (counitAdditiveAlgHom R)
+             (AlgHom.id R R[X])).comp (comulAdditiveAlgHom R)).toLinearMap = _
+    congr 1
+    apply Polynomial.algHom_ext
+    simp [comulAdditiveAlgHom, counitAdditiveAlgHom,
+          Algebra.TensorProduct.map_tmul, Algebra.TensorProduct.includeRight_apply]
+  lTensor_counit_comp_comul := by
+    rw [counit_eq, comul_eq, lTensor_counit_eq, mk_flip_one_eq_includeLeft]
+    change ((Algebra.TensorProduct.map (AlgHom.id R R[X])
+             (counitAdditiveAlgHom R)).comp (comulAdditiveAlgHom R)).toLinearMap = _
+    congr 1
+    apply Polynomial.algHom_ext
+    simp [comulAdditiveAlgHom, counitAdditiveAlgHom,
+          Algebra.TensorProduct.map_tmul, Algebra.TensorProduct.includeLeft_apply]
+  coassoc := by
+    rw [comul_eq, rTensor_comul_eq, lTensor_comul_eq]
+    change ((Algebra.TensorProduct.assoc R R R R[X] R[X] R[X]).toAlgHom.comp
+            ((Algebra.TensorProduct.map (comulAdditiveAlgHom R)
+              (AlgHom.id R R[X])).comp
+             (comulAdditiveAlgHom R))).toLinearMap =
+           ((Algebra.TensorProduct.map (AlgHom.id R R[X])
+             (comulAdditiveAlgHom R)).comp
+            (comulAdditiveAlgHom R)).toLinearMap
+    congr 1
+    apply Polynomial.algHom_ext
+    simp only [comulAdditiveAlgHom, AlgHom.comp_apply, AlgEquiv.toAlgHom_eq_coe,
+          AlgHom.coe_coe, Algebra.TensorProduct.map_tmul, AlgHom.id_apply, aeval_X,
+          map_add, map_one, Algebra.TensorProduct.one_def,
+          Algebra.TensorProduct.assoc_tmul,
+          TensorProduct.add_tmul, TensorProduct.tmul_add]
+    abel
 
 /-! ### Bialgebra instance -/
 
