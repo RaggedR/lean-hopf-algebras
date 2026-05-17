@@ -3,3 +3,5 @@ import HopfAlgebras.Umbral
 import HopfAlgebras.BinomialType
 import HopfAlgebras.Duality
 import HopfAlgebras.DeltaOperator
+import HopfAlgebras.LagrangeInversion
+import HopfAlgebras.UmbralOperator

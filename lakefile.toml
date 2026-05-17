@@ -12,7 +12,10 @@ maxSynthPendingDepth = 3
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-rev = "v4.29.1"
+rev = "c4dcaea34b868f94d96388665b31f462154726b7"
 
 [[lean_lib]]
 name = "HopfAlgebras"
+
+[[lean_lib]]
+name = "Explore"

@@ -4,7 +4,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Robin Langer
 -/
 import HopfAlgebras.BinomialType
+import HopfAlgebras.Umbral
 import Mathlib.Algebra.Polynomial.Taylor
+import Mathlib.Algebra.Polynomial.Roots
+import Mathlib.Algebra.CharZero.Infinite
+import Mathlib.LinearAlgebra.TensorProduct.Basis
+import Mathlib.Algebra.Polynomial.Basis
 
 /-!
 # Delta operators and basic sequences
@@ -133,7 +138,9 @@ end -- end CommSemiring noncomputable section
 
 noncomputable section
 
-open Polynomial Finset
+open Polynomial Finset TensorProduct
+
+open scoped TensorProduct
 
 namespace Polynomial
 
@@ -260,26 +267,485 @@ theorem descPochhammer_isBasicSequence_forwardDiff :
       rw [descPochhammer_succ_left]
       simp [eval_mul, eval_X]
 
-/-! ### Bridge to binomial type (deferred)
+/-! ### Bridge to binomial type — Rota's classification
 
 The fundamental theorem of the umbral calculus: the basic sequence of any delta
-operator is a sequence of binomial type.
+operator is a sequence of binomial type. This requires `Algebra ℚ R` because the
+inductive step divides by `(k+1)` to extract binomial coefficients from a recurrence.
 
-Two proof routes are available:
-1. **Coderivation**: show shift-equivariance implies `(Q ⊗ id) ∘ Δ = Δ ∘ Q`,
-   then construct the umbral operator as a `CoalgHom` and apply `of_coalgebraHom`.
-2. **Direct**: induction using the lowering property and binomial recurrence.
+The proof strategy:
+1. Reduce the coproduct identity to a Taylor identity via `comul_taylor`
+2. Prove the Taylor identity by induction using shift-equivariance + lowering + ℚ
+3. Lift back to the tensor product via `tensor_eval_eq_zero` -/
 
-Both require compositional inverse infrastructure or tensor product ext lemmas
-not yet developed. See HANDOVER.md for the planned approach via Lagrange inversion. -/
+variable [Algebra ℚ R]
+
+/-! ### Helper lemmas for Rota's classification
+
+Over a ℚ-algebra, polynomials that are invariant under all Taylor shifts must be
+constants: the derivative is also shift-invariant and has lower degree, so induction
+on `natDegree` terminates. From this we derive that delta operators send X to a
+constant, reduce degree, and have trivial kernel (modulo constants). -/
+
+-- Over a ℚ-algebra, R is add-torsion-free (used throughout this section)
+theorem instTorsionFree : IsAddTorsionFree R :=
+  IsAddTorsionFree.of_module_rat R
+
+/-- A polynomial invariant under all Taylor shifts is constant. The proof is by
+induction on `natDegree`: the derivative is also shift-invariant with lower degree,
+so by IH it is a constant `C c`; then `c = 0` from `taylor 1 p = p`. -/
+private theorem taylor_invariant_eq_C (p : R[X]) (h : ∀ a : R, taylor a p = p) :
+    p = C (p.eval 0) := by
+  -- Induction on natDegree
+  suffices ∀ (d : ℕ) (q : R[X]), q.natDegree ≤ d → (∀ a, taylor a q = q) → q = C (q.eval 0) from
+    this p.natDegree p le_rfl h
+  intro d
+  induction d with
+  | zero =>
+    intro q hd _
+    rw [eq_C_of_natDegree_le_zero hd]
+    simp [coeff_zero_eq_eval_zero]
+  | succ n ih =>
+    intro q hd hq
+    -- derivative q is also shift-invariant (hasseDeriv 1 is shift-equivariant)
+    have hq_der : ∀ a, taylor a (derivative q) = derivative q := by
+      intro a
+      have se := hasseDeriv_isShiftEquivariant (R := R) 1 a
+      simp only [hasseDeriv_one] at se
+      have h1 : derivative (taylor a q) = taylor a (derivative q) := by
+        change (LinearMap.comp derivative (taylor a)) q = (LinearMap.comp (taylor a) derivative) q
+        rw [se]
+      rw [← h1, hq a]
+    -- natDegree (derivative q) ≤ n, using exact degree formula over torsion-free ring
+    have hd_der : (derivative q).natDegree ≤ n := by
+      have htf : IsAddTorsionFree R := instTorsionFree
+      rw [← hasseDeriv_one, natDegree_hasseDeriv]; omega
+    -- By IH: derivative q is constant
+    have hder_const := ih (derivative q) hd_der hq_der
+    -- derivative q = C c where c = (derivative q).eval 0
+    set c := (derivative q).eval 0
+    -- From derivative q = C c, all coefficients of q vanish at degree ≥ 2
+    have hcoeff : ∀ k, 1 ≤ k → q.coeff (k + 1) = 0 := by
+      intro k hk
+      have htf : IsAddTorsionFree R := instTorsionFree
+      have h1 := congr_arg (fun p => coeff p k) hder_const
+      simp only [coeff_derivative, coeff_C] at h1
+      rw [if_neg (by omega)] at h1
+      rw [show (↑k : R) + 1 = (↑(k + 1) : R) from by push_cast; ring] at h1
+      rw [mul_comm, ← nsmul_eq_mul] at h1
+      have h2 : (k + 1) • q.coeff (k + 1) = (k + 1) • (0 : R) := by rwa [smul_zero]
+      exact htf.nsmul_right_injective (Nat.succ_ne_zero k) h2
+    -- So q = C(q.coeff 0) + C(q.coeff 1) * X
+    have q_form : q = C (q.coeff 0) + C (q.coeff 1) * X := by
+      ext k
+      match k with
+      | 0 => simp
+      | 1 => simp
+      | k + 2 => simp [hcoeff (k + 1) (by omega)]
+    -- From taylor 1 q = q: q(1) = q(0), so coeff 1 = 0
+    have coeff1_zero : q.coeff 1 = 0 := by
+      have h1 := congr_arg (Polynomial.eval 0) (hq 1)
+      rw [taylor_eval, zero_add, q_form] at h1
+      simp only [eval_add, eval_mul, eval_C, eval_X, mul_zero, add_zero, mul_one] at h1
+      exact add_left_cancel (h1.trans (add_zero _).symm)
+    rw [coeff1_zero, C_0, zero_mul, add_zero] at q_form
+    rw [q_form]; simp [coeff_zero_eq_eval_zero]
+
+/-- For a delta operator, Q(X) is the constant polynomial `C u` where `u` is a unit.
+This follows from shift-equivariance: `Q(X + C a) = Q X + Q(C a) = Q X`, so
+`taylor a (Q X) = Q X`, and shift-invariant polynomials are constants. -/
+private theorem delta_op_Q_X_eq_C {Q : R[X] →ₗ[R] R[X]}
+    (hQ : IsDeltaOperator Q) : Q X = C ((Q X).eval 0) := by
+  apply taylor_invariant_eq_C
+  intro a
+  have se := hQ.shift_equivariant a
+  have lhs : Q (taylor a X) = Q X := by
+    rw [taylor_X]; simp [map_add, hQ.kills_constants]
+  calc taylor a (Q X)
+      = ((taylor a).comp Q) X := rfl
+    _ = (Q.comp (taylor a)) X := by rw [← se]
+    _ = Q (taylor a X) := rfl
+    _ = Q X := lhs
+
+/-- The coefficient of `X^{d-1}` in `taylor 1 g - g` equals `↑d * leadingCoeff g`
+where `d = natDegree g`. This is because `hasseDeriv (d-1) g` has degree 1
+with coefficients `g.coeff(d-1)` and `d * leadingCoeff g`. -/
+private theorem coeff_taylor_sub_eq (g : R[X]) (hd : 2 ≤ g.natDegree) :
+    (taylor 1 g - g).coeff (g.natDegree - 1) =
+    ↑g.natDegree * g.leadingCoeff := by
+  have htf : IsAddTorsionFree R := instTorsionFree
+  rw [coeff_sub, taylor_coeff]
+  set h := hasseDeriv (g.natDegree - 1) g
+  have hnd : h.natDegree ≤ 1 := by
+    calc h.natDegree = g.natDegree - (g.natDegree - 1) := natDegree_hasseDeriv g _
+      _ ≤ 1 := by omega
+  -- Evaluate h at 1: since natDegree ≤ 1, h = C(coeff 0) + C(coeff 1) * X
+  have heval : h.eval 1 = h.coeff 0 + h.coeff 1 := by
+    have hform : h = C (h.coeff 0) + C (h.coeff 1) * X := by
+      ext k; match k with
+      | 0 => simp
+      | 1 => simp
+      | k + 2 => simp [coeff_eq_zero_of_natDegree_lt (by omega : h.natDegree < k + 2)]
+    rw [hform]; simp [eval_add, eval_mul, eval_C, eval_X]
+  rw [heval]
+  -- Expand the two coefficients via hasseDeriv_coeff
+  rw [show h.coeff 0 = ↑((0 + (g.natDegree - 1)).choose (g.natDegree - 1)) *
+        g.coeff (0 + (g.natDegree - 1)) from hasseDeriv_coeff _ _ _,
+      show h.coeff 1 = ↑((1 + (g.natDegree - 1)).choose (g.natDegree - 1)) *
+        g.coeff (1 + (g.natDegree - 1)) from hasseDeriv_coeff _ _ _]
+  simp only [zero_add, Nat.choose_self, Nat.cast_one, one_mul,
+             show 1 + (g.natDegree - 1) = g.natDegree from by omega,
+             add_sub_cancel_left, leadingCoeff]
+  congr 1; push_cast; congr 1
+  rw [show g.natDegree = g.natDegree - 1 + 1 from by omega]; simp [Nat.choose_succ_self_right]
+
+/-- `Q` applied to a polynomial of degree `< N` gives degree `≤ N - 2`, when
+`Q` kills constants and `Q(X^k)` has degree `≤ k-1` for `1 ≤ k < N`.
+Proved by decomposing into monomials and bounding each `Q(X^k)`. -/
+private theorem natDegree_Q_of_bounded {Q : R[X] →ₗ[R] R[X]} {p : R[X]} {N : ℕ}
+    (hN : p.natDegree < N) (hN2 : 2 ≤ N)
+    (hQ0 : ∀ r : R, Q (C r) = 0)
+    (hQk : ∀ k, 1 ≤ k → k < N → (Q (X ^ k)).natDegree ≤ k - 1) :
+    (Q p).natDegree ≤ N - 2 := by
+  have hsum : Q p = (range N).sum (fun k => p.coeff k • Q (X ^ k)) := by
+    conv_lhs => rw [as_sum_range' p N hN]
+    rw [map_sum]; apply Finset.sum_congr rfl; intro k _
+    simp only [← C_mul_X_pow_eq_monomial, ← smul_eq_C_mul]; exact Q.map_smul _ _
+  rw [hsum]
+  exact natDegree_sum_le_of_forall_le (range N) _ (fun k hk => by
+    rw [Finset.mem_range] at hk
+    rcases Nat.eq_zero_or_pos k with rfl | hk_pos
+    · rw [pow_zero, show (1 : R[X]) = C 1 from by simp, hQ0, smul_zero, natDegree_zero]; omega
+    · exact (natDegree_smul_le _ _).trans ((hQk k hk_pos hk).trans (by omega)))
+
+/-- The degree of Q(X^n) is at most n-1 for delta operators over ℚ-algebras.
+By contradiction: if `natDegree(Q(X^m)) ≥ m`, the coefficient at position `d-1`
+of `taylor 1 (Q(X^m)) - Q(X^m)` is `d * leadingCoeff ≠ 0`, but the shift-equivariance
+identity forces this polynomial to equal `Q((X+1)^m - X^m)` which has smaller degree. -/
+theorem natDegree_delta_op_pow {Q : R[X] →ₗ[R] R[X]}
+    (hQ : IsDeltaOperator Q) : ∀ n, 1 ≤ n → (Q (X ^ n)).natDegree ≤ n - 1 := by
+  -- Strong induction: assume true for all k < n
+  suffices ∀ n, (∀ k, 1 ≤ k → k < n → (Q (X ^ k)).natDegree ≤ k - 1) →
+      1 ≤ n → (Q (X ^ n)).natDegree ≤ n - 1 by
+    intro n hn
+    exact Nat.strongRecOn (motive := fun n => 1 ≤ n → (Q (X ^ n)).natDegree ≤ n - 1)
+      n (fun n ih hn => this n (fun k hk1 hkn => ih k hkn hk1) hn) hn
+  intro n ih hn
+  match n, hn with
+  | 1, _ => rw [pow_one, delta_op_Q_X_eq_C hQ, natDegree_C]
+  | n + 2, _ =>
+      -- Goal: natDegree(Q(X^{n+2})) ≤ n+1
+      set m := n + 2
+      set g := Q (X ^ m)
+      by_contra hbig; push_neg at hbig
+      have hg_ne : g ≠ 0 := ne_zero_of_natDegree_gt (by omega)
+      have htf : IsAddTorsionFree R := instTorsionFree
+      -- The coefficient of X^{d-1} in (taylor 1 g - g) is nonzero
+      have coeff_ne : (taylor 1 g - g).coeff (g.natDegree - 1) ≠ 0 := by
+        rw [coeff_taylor_sub_eq g (by omega), ← nsmul_eq_mul]
+        intro h
+        exact leadingCoeff_ne_zero.mpr hg_ne
+          (htf.nsmul_right_injective (by omega : g.natDegree ≠ 0)
+            (by rwa [smul_zero] : g.natDegree • g.leadingCoeff = g.natDegree • 0))
+      -- So natDegree(taylor 1 g - g) ≥ g.natDegree - 1 ≥ n + 1
+      have hnd_lb : n + 1 ≤ (taylor 1 g - g).natDegree := by
+        have := le_natDegree_of_ne_zero coeff_ne; omega
+      -- taylor 1 g - g = Q((X + 1)^m - X^m) by shift-equivariance + linearity
+      have taylor_pow : taylor (1 : R) (X ^ m) = (X + C 1) ^ m := by
+        induction m with
+        | zero => simp
+        | succ m ihm => rw [pow_succ, taylor_mul, ihm, taylor_X, pow_succ]
+      have diff_eq : taylor 1 g - g = Q ((X + C 1) ^ m - X ^ m) := by
+        have se := hQ.shift_equivariant 1
+        have shift : taylor 1 g = Q ((X + C 1) ^ m) := by
+          calc taylor 1 g = ((taylor 1).comp Q) (X ^ m) := rfl
+            _ = (Q.comp (taylor 1)) (X ^ m) := by rw [← se]
+            _ = Q (taylor 1 (X ^ m)) := rfl
+            _ = Q ((X + C 1) ^ m) := by rw [taylor_pow]
+        rw [shift, ← map_sub]
+      -- (X + C 1)^m - X^m has natDegree < m (monic, leading terms cancel)
+      haveI : Nontrivial R := by
+        rcases subsingleton_or_nontrivial R with h | h
+        · exfalso; haveI := h; exact hg_ne (Subsingleton.eq_zero g)
+        · exact h
+      have hpm : ((X + C (1 : R)) ^ m).Monic := (monic_X_add_C 1).pow m
+      have hdp : ((X + C (1 : R)) ^ m).natDegree = m := by
+        rw [(monic_X_add_C (1 : R)).natDegree_pow, natDegree_X_add_C, mul_one]
+      have hnd_diff : (((X : R[X]) + C 1) ^ m - X ^ m).natDegree < m := by
+        have hdeg := @degree_sub_lt R _ ((X + C 1) ^ m) (X ^ m)
+          (by rw [degree_eq_natDegree hpm.ne_zero, degree_eq_natDegree (monic_X_pow m).ne_zero,
+                  hdp, natDegree_X_pow])
+          hpm.ne_zero
+          (by rw [hpm.leadingCoeff, (monic_X_pow m).leadingCoeff])
+        rw [degree_eq_natDegree hpm.ne_zero, hdp] at hdeg
+        rcases eq_or_ne (((X : R[X]) + C 1) ^ m - X ^ m) 0 with h0 | hne
+        · rw [h0, natDegree_zero]; omega
+        · exact (natDegree_lt_iff_degree_lt hne).mpr hdeg
+      -- Q of it has natDegree ≤ m - 2 = n
+      have hnd_ub : (Q ((X + C 1) ^ m - X ^ m)).natDegree ≤ n := by
+        have := natDegree_Q_of_bounded hnd_diff (by omega : 2 ≤ m) hQ.kills_constants
+          (fun k hk1 hkm => ih k hk1 (by omega))
+        omega
+      -- Contradiction: n + 1 ≤ natDegree(LHS) = natDegree(Q(...)) ≤ n
+      rw [diff_eq] at hnd_lb; omega
+
+/-- Over a ℚ-algebra, `natDegree (taylor a p - p) ≤ natDegree p - 1` for `natDegree p ≥ 1`.
+The leading terms cancel since `leadingCoeff_taylor` gives equal leading coefficients. -/
+private theorem natDegree_taylor_sub_le (a : R) (p : R[X]) (hp : 1 ≤ p.natDegree) :
+    (taylor a p - p).natDegree ≤ p.natDegree - 1 := by
+  by_contra h; push Not at h
+  have hbound : (taylor a p - p).natDegree ≤ p.natDegree :=
+    (natDegree_sub_le _ _).trans (by rw [natDegree_taylor, max_self])
+  have heq : (taylor a p - p).natDegree = p.natDegree := by omega
+  have hne : taylor a p - p ≠ 0 := ne_zero_of_natDegree_gt (by omega)
+  exact leadingCoeff_ne_zero.mpr hne (by
+    rw [leadingCoeff, heq]; simp [coeff_sub, coeff_taylor_natDegree])
+
+/-- Over a ℚ-algebra, evaluation at all points determines the polynomial: if
+`p.eval a = 0` for all `a`, then `p = 0`. Proved by induction on `natDegree`:
+the forward difference `taylor 1 p - p` also vanishes everywhere with smaller
+degree, so by IH `taylor a p = p` for all `a`, and `taylor_invariant_eq_C` gives
+`p = C(0) = 0`. -/
+theorem eval_determines (p : R[X]) (h : ∀ a : R, p.eval a = 0) : p = 0 := by
+  suffices ∀ n (q : R[X]), q.natDegree ≤ n → (∀ a, q.eval a = 0) → q = 0 from
+    this p.natDegree p le_rfl h
+  intro n; induction n with
+  | zero =>
+    intro q hd heval
+    have hc := eq_C_of_natDegree_le_zero hd
+    rw [hc] at heval ⊢; simp [eval_C] at heval; rw [heval, C_0]
+  | succ n ih =>
+    intro q hd heval
+    have htaylor_inv : ∀ a : R, taylor a q = q := by
+      intro a
+      rcases Nat.eq_zero_or_pos q.natDegree with hzero | hpos
+      · rw [eq_C_of_natDegree_le_zero (by omega : q.natDegree ≤ 0), taylor_C]
+      · have hfd_eval : ∀ b, (taylor a q - q).eval b = 0 := by
+          intro b; rw [eval_sub, taylor_eval]; simp [heval]
+        have hsmall : (taylor a q - q).natDegree ≤ n :=
+          (natDegree_taylor_sub_le a q hpos).trans (by omega)
+        have := ih (taylor a q - q) hsmall hfd_eval
+        rwa [sub_eq_zero] at this
+    rw [taylor_invariant_eq_C q htaylor_inv, heval 0, C_0]
+
+/-- The expansion identity: if `Q(f) = 0` for a shift-equivariant operator killing
+constants, then `Σ cₖ • hasseDeriv k f = 0` where `cₖ = (Q(X^k)).eval 0`.
+This is the key identity expressing "Q is a formal series in the Hasse derivatives." -/
+private theorem sum_hasseDeriv_eq_zero {Q : R[X] →ₗ[R] R[X]}
+    (hse : ∀ a : R, Q.comp (taylor a) = (taylor a).comp Q)
+    (hkc : ∀ r : R, Q (C r) = 0) {f : R[X]} (hQf : Q f = 0) :
+    (range (f.natDegree + 1)).sum
+      (fun k => (Q (X ^ k)).eval 0 • hasseDeriv k f) = 0 := by
+  apply eval_determines; intro a
+  simp only [eval_finset_sum, eval_smul, smul_eq_mul, eval_zero]
+  -- Q(taylor a f) = 0 from shift-equivariance
+  have hQta : Q (taylor a f) = 0 := by
+    have := congr_arg (· f) (hse a)
+    simp only [LinearMap.comp_apply] at this
+    rw [this, hQf]; simp
+  -- Decompose taylor a f into monomials, apply Q, evaluate at 0
+  have hdecomp : Q (taylor a f) = (range (f.natDegree + 1)).sum
+      (fun k => (taylor a f).coeff k • Q (X ^ k)) := by
+    conv_lhs => rw [as_sum_range' (taylor a f) _ (by rw [natDegree_taylor]; exact Nat.lt_succ_of_le le_rfl)]
+    rw [map_sum]; apply Finset.sum_congr rfl; intro k _
+    simp only [← C_mul_X_pow_eq_monomial, ← smul_eq_C_mul]; exact Q.map_smul _ _
+  have h0 := congr_arg (Polynomial.eval 0) (hdecomp ▸ hQta)
+  simp only [eval_finset_sum, eval_smul, smul_eq_mul, eval_zero] at h0
+  convert h0 using 1; apply Finset.sum_congr rfl; intro k _
+  rw [taylor_coeff a f k]; ring
+
+/-- If `Q(f) = 0` and `f.eval 0 = 0` for a delta operator over ℚ, then `f = 0`.
+From `Q(f) = 0`, the expansion identity gives `c₁ • D(f) + Σ_{k≥2} cₖ • Dₖ(f) = 0`
+where `c₁` is a unit. The `c₁ • D(f)` term has degree `d-1` while the rest has
+degree `≤ d-2`, giving a contradiction for non-constant `f`. -/
+private theorem delta_ker_eval_zero {Q : R[X] →ₗ[R] R[X]}
+    (hQ : IsDeltaOperator Q) (f : R[X]) (hQf : Q f = 0) (hf0 : f.eval 0 = 0) :
+    f = 0 := by
+  by_contra hf_ne
+  have htf : IsAddTorsionFree R := instTorsionFree
+  have hd : 1 ≤ f.natDegree := by
+    by_contra h
+    have hc := eq_C_of_natDegree_le_zero (by omega : f.natDegree ≤ 0)
+    rw [hc] at hf0 hf_ne; simp [eval_C] at hf0; rw [hf0, C_0] at hf_ne; exact hf_ne rfl
+  -- Σ cₖ • hasseDeriv k f = 0 (Q acts as formal series in Hasse derivatives)
+  have hsum := sum_hasseDeriv_eq_zero hQ.shift_equivariant hQ.kills_constants hQf
+  -- Extract coeff at natDegree-1: distribute coeff through the sum
+  have hcoeff_sum : (range (f.natDegree + 1)).sum
+      (fun k => ((Q (X ^ k)).eval 0 • hasseDeriv k f).coeff (f.natDegree - 1)) = 0 := by
+    have h := congr_arg (fun p => p.coeff (f.natDegree - 1)) hsum
+    simp only [coeff_zero] at h; convert h using 1
+    induction (range (f.natDegree + 1)) using Finset.cons_induction with
+    | empty => simp
+    | cons a s ha ih => simp only [Finset.sum_cons, coeff_add]; rw [ih]
+  simp only [coeff_smul, smul_eq_mul] at hcoeff_sum
+  -- Only k=1 contributes (k=0: Q kills constants; k≥2: hasseDeriv too high)
+  have hreduce := Finset.sum_eq_single 1
+    (s := range (f.natDegree + 1))
+    (f := fun k => (Q (X ^ k)).eval 0 * (hasseDeriv k f).coeff (f.natDegree - 1))
+    (fun k hk hk1 => by
+      dsimp only; rw [Finset.mem_range] at hk
+      match k with
+      | 0 => rw [pow_zero, show (1 : R[X]) = C 1 from C_1.symm, hQ.kills_constants,
+                  eval_zero, zero_mul]
+      | 1 => exact absurd rfl hk1
+      | k + 2 => rw [hasseDeriv_coeff, coeff_eq_zero_of_natDegree_lt (by omega),
+                      mul_zero, mul_zero])
+    (fun h => absurd (Finset.mem_range.mpr (by omega)) h)
+  rw [hreduce] at hcoeff_sum; dsimp only at hcoeff_sum
+  rw [pow_one, hasseDeriv_coeff, show f.natDegree - 1 + 1 = f.natDegree from by omega,
+      Nat.choose_one_right] at hcoeff_sum
+  -- hcoeff_sum : (Q X).eval 0 * (↑natDegree * f.coeff natDegree) = 0
+  -- (Q X).eval 0 is a unit (from delta operator axiom)
+  have hc₁ : IsUnit ((Q X).eval 0) := by
+    convert hQ.unit_leading using 1; exact (coeff_zero_eq_eval_zero _).symm
+  rcases hc₁ with ⟨u, hu⟩; rw [← hu] at hcoeff_sum
+  have h1 : (↑f.natDegree : R) * f.coeff f.natDegree = 0 :=
+    (Units.mul_right_eq_zero u).mp hcoeff_sum
+  rw [← nsmul_eq_mul] at h1
+  have h2 : f.natDegree • f.coeff f.natDegree = f.natDegree • (0 : R) := by rwa [smul_zero]
+  exact leadingCoeff_ne_zero.mpr hf_ne
+    (htf.nsmul_right_injective (show f.natDegree ≠ 0 by omega) h2)
+
+/-- The Taylor expansion of the basic sequence satisfies the binomial identity:
+`taylor a (p n) = Σ C(n,k) • p k * C (p (n-k)).eval a`.
+
+The proof is by strong induction: apply Q to both sides, use shift-equivariance
+to get `(n+1) • taylor a (p n)` on the LHS, Pascal's identity to match the RHS,
+then conclude by the kernel-of-Q argument (Q kills only constants over ℚ). -/
+private theorem taylor_basic_eq {Q : R[X] →ₗ[R] R[X]} {p : ℕ → R[X]}
+    (hQ : IsDeltaOperator Q) (hp : IsBasicSequence Q p) (n : ℕ) (a : R) :
+    taylor a (p n) = (Finset.range (n + 1)).sum fun k =>
+      (Nat.choose n k) • (p k * C ((p (n - k)).eval a)) := by
+  induction n with
+  | zero =>
+    simp only [Finset.sum_range_succ, Finset.range_zero, Finset.sum_empty, zero_add,
+               Nat.choose_zero_right, one_smul, Nat.sub_zero, hp.zero_one]
+    rw [show (1 : R[X]) = C 1 from C_1.symm, taylor_C, eval_C, C_1, mul_one]
+  | succ n ih =>
+    -- D = LHS - RHS = 0, proved by delta_ker_eval_zero
+    suffices h : taylor a (p (n + 1)) - (Finset.range (n + 2)).sum (fun k =>
+        (Nat.choose (n + 1) k) • (p k * C ((p (n + 1 - k)).eval a))) = 0 from
+      sub_eq_zero.mp h
+    apply delta_ker_eval_zero hQ
+    · -- Q(D) = 0
+      rw [map_sub, sub_eq_zero]
+      -- Q(LHS) = (n+1) • taylor a (p n)
+      have hQ_lhs : Q (taylor a (p (n + 1))) = (n + 1) • taylor a (p n) := by
+        have hse := congr_arg (· (p (n + 1))) (hQ.shift_equivariant a)
+        simp only [LinearMap.comp_apply] at hse
+        rw [hse, hp.lowering n, map_nsmul]
+      -- Q(RHS): compute via lowering + absorption + reindex
+      have hQ_rhs : Q ((Finset.range (n + 2)).sum fun k =>
+          (n + 1).choose k • (p k * C (eval a (p (n + 1 - k))))) =
+        (n + 1) • (Finset.range (n + 1)).sum fun k =>
+          n.choose k • (p k * C (eval a (p (n - k)))) := by
+        -- Distribute Q through sum and nsmul
+        rw [map_sum]; simp_rw [map_nsmul]
+        -- Peel off k=0 (vanishes: p 0 = 1, Q kills constants)
+        rw [Finset.sum_range_succ']
+        simp only [Nat.choose_zero_right, one_smul, hp.zero_one, one_mul,
+                   hQ.kills_constants, add_zero]
+        -- Push (n+1)• inside the sum, then match term-by-term
+        rw [Finset.smul_sum]
+        apply Finset.sum_congr rfl; intro k _
+        rw [show n + 1 - (k + 1) = n - k from by omega]
+        -- Q(p(k+1) * C r) = r • (k+1) • p k by lowering + scalar movement
+        set r := eval a (p (n - k))
+        rw [mul_comm (p (k + 1)) (C r), ← smul_eq_C_mul, Q.map_smul, hp.lowering k]
+        -- LHS: C(n+1,k+1) • (r • ((k+1) • p k))
+        -- RHS: (n+1) • (C(n,k) • (p k * C r))
+        -- Rearrange + absorption
+        rw [smul_comm r (k + 1 : ℕ) (p k), ← mul_smul,
+            show (n + 1).choose (k + 1) * (k + 1) = (n + 1) * n.choose k from
+              (Nat.add_one_mul_choose_eq n k).symm,
+            mul_smul]
+        congr 2; rw [smul_eq_C_mul, mul_comm]
+      rw [hQ_lhs, hQ_rhs, ih]
+    · -- D.eval 0 = 0
+      rw [eval_sub, taylor_eval, zero_add, sub_eq_zero, eval_finset_sum]
+      -- Only k=0 survives: (p k).eval 0 = 0 for k ≥ 1 by normalization
+      rw [Finset.sum_eq_single_of_mem 0 (Finset.mem_range.mpr (by omega))]
+      · simp [hp.zero_one, Nat.choose_zero_right]
+      · intro k _ hk; simp [hp.normalized k (by omega : 0 < k)]
+
+/-- The composition `lmul' ∘ (id ⊗ aeval(C a)) ∘ Δ` equals `taylor a` as algebra homs.
+Both send X to X + C a, so `algHom_ext` closes the proof. This connects the
+coalgebra structure (Δ) to the Taylor shift (taylor a) via evaluation. -/
+private theorem comul_taylor_bridge (a : R) :
+    (Algebra.TensorProduct.lmul' (R := R) (S := R[X])).comp
+      ((Algebra.TensorProduct.map (AlgHom.id R R[X]) (Polynomial.aeval (C a))).comp
+       (Polynomial.comulAdditive R)) = Polynomial.taylorAlgHom a := by
+  apply Polynomial.algHom_ext
+  simp [Polynomial.comulAdditive, Algebra.TensorProduct.map_tmul,
+        Algebra.TensorProduct.lmul'_apply_tmul, taylor_X]
+
+/-- `aeval (C a) g = C (g.eval a)`: evaluating a polynomial at `C a` in `R[X]` is the
+same as evaluating at `a` in `R` then embedding via `C`. This follows from
+`aeval_algHom_apply` with the structure map `algebraMap R R[X]`. -/
+private theorem aeval_C_eq_C_eval (a : R) (g : R[X]) :
+    Polynomial.aeval (C a) g = C (g.eval a) := by
+  induction g using Polynomial.induction_on' with
+  | add p q hp hq => simp [map_add, hp, hq]
+  | monomial n r => rw [aeval_monomial, eval_monomial, ← C_eq_algebraMap, map_mul, map_pow]
+
+/-- Tensor separation: if applying `lmul' ∘ (id ⊗ aeval(C a))` to `T` gives `0`
+for all `a : R`, then `T = 0`. The key idea: double evaluation using `eval_determines`
+shows each basis coordinate vanishes (the evaluation pairing `(a,b) ↦ f(b) * g(a)`
+separates points of `R[X] ⊗ R[X]` over a ℚ-algebra). -/
+private theorem eval_tensor_zero (T : R[X] ⊗[R] R[X])
+    (h : ∀ a : R, (Algebra.TensorProduct.lmul' (R := R) (S := R[X]))
+      ((Algebra.TensorProduct.map (AlgHom.id R R[X]) (Polynomial.aeval (C a))) T) = 0) :
+    T = 0 := by
+  -- Double evaluation: for all a b, the scalar pairing is 0
+  have heval : ∀ (a b : R), ((Algebra.TensorProduct.lmul' (R := R) (S := R[X]))
+      ((Algebra.TensorProduct.map (AlgHom.id R R[X]) (aeval (C a))) T)).eval b = 0 := by
+    intro a b; rw [h a, eval_zero]
+  -- Use the left monomial basis to decompose T
+  set e := TensorProduct.equivFinsuppOfBasisLeft (N := R[X]) (basisMonomials R) with he
+  -- T = 0 iff its basis decomposition is 0
+  suffices e T = 0 by rwa [LinearEquiv.map_eq_zero_iff] at this
+  apply Finsupp.ext; intro j
+  simp only [Finsupp.zero_apply]
+  apply eval_determines; intro a
+  -- (e T j).eval a is the j-th coefficient of bridge_a(T), which is 0
+  -- Proved by showing two linear maps from R[X] ⊗ R[X] to R agree on all pure tensors
+  have key : ∀ (S : R[X] ⊗[R] R[X]),
+      (e S j).eval a = ((Algebra.TensorProduct.lmul' (R := R) (S := R[X]))
+        ((Algebra.TensorProduct.map (AlgHom.id R R[X]) (aeval (C a))) S)).coeff j := by
+    intro S; induction S using TensorProduct.induction_on with
+    | zero => simp [he, LinearEquiv.map_zero]
+    | tmul f g =>
+      simp only [he, TensorProduct.equivFinsuppOfBasisLeft_apply_tmul_apply,
+                 Algebra.TensorProduct.map_tmul, AlgHom.id_apply,
+                 Algebra.TensorProduct.lmul'_apply_tmul, aeval_C_eq_C_eval,
+                 eval_smul, smul_eq_mul, coeff_mul_C]
+      -- Bridge: (basisMonomials R).repr f j = f.coeff j
+      rw [show ((basisMonomials R).repr f) j = f.coeff j from toFinsupp_apply f j]
+    | add x y hx hy => simp [map_add, hx, hy]
+  rw [key, h a, coeff_zero]
 
 /-- **Rota's classification theorem** (umbral calculus): the basic sequence of a delta
-operator is of binomial type. This connects the operator-theoretic and coalgebraic
-viewpoints. -/
+operator is of binomial type. Over a ℚ-algebra, this connects the operator-theoretic
+and coalgebraic viewpoints.
+
+The proof reduces the coproduct identity to the Taylor identity `taylor_basic_eq`
+via `comul_taylor_bridge`, then lifts back using `eval_tensor_zero`. -/
 theorem IsBasicSequence.isBinomialType {Q : R[X] →ₗ[R] R[X]} {p : ℕ → R[X]}
-    (_hQ : IsDeltaOperator Q) (_hp : IsBasicSequence Q p) :
+    (hQ : IsDeltaOperator Q) (hp : IsBasicSequence Q p) :
     IsBinomialType R p := by
-  sorry
+  unfold IsBinomialType; intro n
+  rw [← sub_eq_zero]; apply eval_tensor_zero; intro a
+  -- The bridge map lmul' ∘ map id (aeval(Ca)) distributes over subtraction
+  simp only [map_sub, sub_eq_zero, map_sum, map_nsmul,
+             Algebra.TensorProduct.map_tmul, AlgHom.id_apply,
+             Algebra.TensorProduct.lmul'_apply_tmul, aeval_C_eq_C_eval]
+  -- LHS = taylor a (p n) by bridge lemma
+  rw [show (Algebra.TensorProduct.lmul' (R := R) (S := R[X]))
+      ((Algebra.TensorProduct.map (AlgHom.id R R[X]) (aeval (C a)))
+        (CoalgebraStruct.comul (p n))) = taylor a (p n) from by
+    change _ = taylorAlgHom a (p n)
+    exact AlgHom.congr_fun (comul_taylor_bridge a) (p n)]
+  exact taylor_basic_eq hQ hp n a
 
 end Polynomial
 

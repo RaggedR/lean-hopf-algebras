@@ -25,15 +25,16 @@ Robin has a new job (as of 2026-05-15) that requires using Lean. He has deep mat
 │   ├── Umbral.lean        # Development file: full Hopf algebra on R[X] + primitives
 │   ├── BinomialType.lean  # Sequences of binomial type + coalgebra endomorphism theorem
 │   ├── Duality.lean       # R[X] / R⟦X⟧ duality via Hasse derivatives
-│   ├── DeltaOperator.lean # Delta operators, forward diff, basic sequences
-│   └── Polynomial.lean    # PR-ready file: clean Mathlib-style version
+│   ├── DeltaOperator.lean       # Delta operators, forward diff, basic sequences
+│   ├── LagrangeInversion.lean   # Compositional inverse for power series (NEW)
+│   └── Polynomial.lean          # PR-ready file: clean Mathlib-style version
 ├── thesis-tex/            # Extracted from arXiv-0907.3950v2.tar.gz
 │   └── thesis.tex         # Robin's masters thesis (the umbral calculus source)
 ├── arXiv-0907.3950v2.tar.gz  # Robin's masters thesis tarball
 └── .lake/                 # Build artifacts + Mathlib source
 ```
 
-All files build clean: `lake build HopfAlgebras` succeeds (one expected `sorry` warning in DeltaOperator.lean — Rota's classification theorem, deferred pending Lagrange inversion).
+All files build clean: `lake build HopfAlgebras` succeeds with **zero `sorry` warnings**. The entire umbral calculus formalization is complete through Rota's classification theorem and the umbral operator (Route B via generating functions).
 
 ## What's formalized (COMPLETED)
 
@@ -71,14 +72,25 @@ All files build clean: `lake build HopfAlgebras` succeeds (one expected `sorry` 
 
 ### PR status
 
-**leanprover-community/mathlib4#39410** — submitted 2026-05-15.
-
-- **CI had a build failure** due to Lean 4.30.0 `module` system change — **fixed and pushed** (commit 83446f3)
-- The fix: added `module` keyword and `public import` to match v4.30.0 syntax
-- **Important**: the local project (v4.29.1) uses old-style `import`; the fork (v4.30.0-rc2) uses `module` / `public import`. Don't mix them.
+**leanprover-community/mathlib4#39410** — Polynomial Hopf algebra (𝔾ₐ), submitted 2026-05-15.
+- CI green, one review from wwylele (distinguished 𝔾ₐ from 𝔾ₘ, applied `where` style fix)
 - PR file: `Mathlib/RingTheory/HopfAlgebra/Polynomial.lean`
-- Fork: `~/git/mathlib4-fork/` on branch `feat/polynomial-hopf-algebra`
-- Awaiting CI re-run and review
+- Fork branch: `feat/polynomial-hopf-algebra`
+
+**leanprover-community/mathlib4#39458** — Compositional inverse — **CLOSED** (session 8).
+- Subsumed by `PowerSeries.substInvOfIsUnit` which was added to Mathlib independently.
+- Reviewer wwylele pointed this out. Our `compInv` is redundant.
+
+**leanprover-community/mathlib4#39465** — Delta operators + Rota's classification, submitted 2026-05-17 (session 8).
+- PR files: `Mathlib/RingTheory/HopfAlgebra/BinomialType.lean` + `DeltaOperator.lean`
+- Fork branch: `feat/delta-operators` (based on `feat/polynomial-hopf-algebra`)
+- Depends on #39410
+- CI: lint fixes pushed (deprecated `eval_finset_sum` → `eval_finsetSum`, `push_neg` → `push Not`, `set_option linter.unusedSectionVars false` for 4 theorems since `omit` not available in 4.30.0-rc2)
+
+**Fork**: `~/git/mathlib4-fork/` — RaggedR/mathlib4
+- **Important**: the local project (v4.29.1) uses old-style `import`; the fork (v4.30.0-rc2) uses `module` / `public import`. Don't mix them.
+- `IsBinomialType` must be `abbrev` (not `def`) for cross-module unfolding in 4.30.0
+- `comulAdditive` → `comulAdditiveAlgHom` in the fork version
 
 ### Basic.lean — Learning playground (unchanged)
 - Group algebra: `simp` closes `S(g) = g⁻¹` and `ε(g) = 1`
@@ -113,7 +125,7 @@ All files build clean: `lake build HopfAlgebras` succeeds (one expected `sorry` 
 - `PowerSeries.coeff (n : ℕ) : R⟦X⟧ →ₗ[R] R` — extract coefficient
 - `PowerSeries.constantCoeff : R⟦X⟧ →+* R` — extract constant term (ring hom)
 - **Key fact**: `HasSubst a` holds whenever `constantCoeff a = 0` (since `0` is nilpotent)
-- **NO compositional inverse** — `∃ g, subst g f = X` is NOT proved for any f
+- **Compositional inverse** — NOW proved in our PR #39458 (`PowerSeries.compInv`)
 
 ### What does NOT exist in Mathlib (opportunity)
 - **Primitive elements** — no `IsPrimitive` predicate (only `IsGroupLikeElem`)
@@ -175,11 +187,91 @@ For sequences of binomial type, the proofs are **combinatorial** rather than alg
 
 ## What needs doing next
 
-### Immediate: Monitor PR #39410
-- CI fix pushed (commit `1980b82`): added `public section` and removed unused simp args
-- The two CI issues were: `linter.privateModule` (Lean 4.30.0 defaults to private) and `linter.unusedSimpArgs` (deprecated `AlgEquiv.toAlgHom_eq_coe` + unused `AlgHom.coe_coe`, `Algebra.TensorProduct.assoc_tmul`)
-- Be prepared to split into 3 files if reviewers request it
+### Immediate: Monitor PRs #39410 and #39465
+- **#39410** (Hopf algebra): CI green, one review applied. Awaiting merge.
+- **#39465** (delta operators + Rota): CI fixes pushed. Awaiting review.
 - Introduce yourself on Zulip (the welcome bot suggested this)
+
+### IN PROGRESS: Umbral operators via generating functions (Route B)
+
+**Mathlib bumped** (session 9): v4.29.1 → v4.30.0-rc2 (commit c4dcaea). `substInvOfIsUnit` now available. Build passes (1802 jobs).
+
+**File: `HopfAlgebras/UmbralOperator.lean`** — created session 9. One sorry remains.
+
+| Definition/Theorem | Status |
+|-------------------|--------|
+| `deltaSeriesOf Q` | DONE — `mk (fun k => (1/k!) * (Q(X^k)).eval 0)` |
+| `deltaSeriesOf_constantCoeff` | DONE — Q kills constants |
+| `deltaSeriesOf_isUnit_coeff_one` | DONE — delta operator axiom |
+| `deltaSeriesInv Q hQ` | DONE — `substInvOfIsUnit` applied |
+| `deltaSeriesInv_right` (f(g)=X) | DONE — `subst_substInvOfIsUnit_left` |
+| `deltaSeriesInv_left` (g(f)=X) | DONE — `subst_substInvOfIsUnit_right` |
+| `umbralPoly Q hQ n` | DONE — `Σ descFact(n,n-k) * coeff n (g^k) * X^k` |
+| `umbralPoly_zero` (p₀ = 1) | DONE |
+| `umbralPoly_eval_zero` (pₙ(0)=0) | DONE |
+| `umbralPoly_lowering` (Q(pₙ₊₁)=(n+1)•pₙ) | **DONE** — via umbral duality |
+| `umbralPoly_isBasicSequence` | depends on lowering |
+| `umbralOp Q hQ` (linear map) | DONE — via `Polynomial.lsum` |
+| `umbralOp_monomial` | DONE |
+| `umbralOp_pow` (U(X^n)=pₙ) | DONE |
+
+**`key_coeff_identity` — PROVED** (session 9, late). The power series identity
+`Σ_d (coeff d f) * coeff(n+1)(g^{d+m}) = coeff n (g^m)` uses the Jabotinsky
+column approach (thesis lines 900-912): expand via `coeff_mul`, swap sums via
+`Finset.sum_comm`, recognize inner sum as `coeff_i(X)` via `coeff_subst'` +
+`deltaSeriesInv_left`, collapse antidiagonal.
+
+Key Lean gotchas:
+- Do NOT `open Finset` — conflicts with `PowerSeries.coeff_mul`
+- Use `deltaSeriesInv_left` (not `_right`) for `f(g)=X` in `coeff_subst'`
+  (convention: `subst a b = b(a)`, so `subst g f = f(g)`)
+
+**NEW (session 10): Jabotinsky duality infrastructure**
+
+Three new lemmas added before `umbralPoly_lowering`:
+
+| Lemma | Status | What it proves |
+|-------|--------|----------------|
+| `jabotinsky_identity` | **DONE** | Σ_j coeff_j(f^k) · coeff_n(g^j) = δ_{nk} |
+| `descFactorial_choose_factorial` | **DONE** | descFact(n+1,n+1-l) * C(l,m) * (l-m)! = descFact(n+1,n+1-m) |
+| `Q_monomial_coeff` | **DONE** | (Q(X^l)).coeff m = C(l,m) * (Q(X^{l-m})).eval 0 |
+
+The **Jabotinsky identity** is the "connecting lemma" linking `f(g) = X` to polynomial
+duality. Proof: `subst_pow` gives `subst g (f^k) = X^k`, then `coeff_subst'` +
+`finsum_eq_sum_of_support_subset` (same pattern as `inner_sum_eq`).
+
+The **factorial identity** (`descFactorial_choose_factorial`) uses `nlinarith` with:
+- `Nat.choose_mul_factorial_mul_factorial` : C(l,m) * m! * (l-m)! = l!
+- `Nat.factorial_mul_descFactorial` : (n-k)! * descFact(n,k) = n!
+
+**Remaining sorry** (`Q_monomial_coeff`): shift-equivariance + `Polynomial.funext`.
+The proof structure is:
+1. Eval identity: (Q(X^l)).eval a = Σ_k C(l,k) * c_k * a^{l-k}
+   (from shift-equiv: Q(taylor_a(X^l)) = taylor_a(Q(X^l)), eval at 0)
+2. `Polynomial.funext` [needs `Infinite R` from `CharZero.infinite`]:
+   Q(X^l) = Σ_k C(l,k) * c_k * X^{l-k}
+3. Extract coeff m (only k=l-m term contributes), use `Nat.choose_symm`
+
+Lean gotchas discovered:
+- `CharZero.infinite (M := R)` for the explicit type application
+- `Nat.factorial_mul_descFactorial` gives `(n-(n-l))! * ...` — need `rw [show n-(n-l)=l from by omega]`
+- `Polynomial.finset_sum_coeff` is deprecated → use `Polynomial.finsetSum_coeff`
+
+**Remaining sorry** (`umbralPoly_lowering`): uses Q_monomial_coeff + key_coeff_identity.
+The proof (once Q_monomial_coeff is available) is:
+1. `Polynomial.ext` — reduce to coefficient equality at m
+2. LHS: linearity gives Σ_l a_l * C(l,m) * c_{l-m}
+3. Apply `descFactorial_choose_factorial`: factor out descFact(n+1,n+1-m)
+4. Reindex sum (d = l-m): becomes key_coeff_identity(m, n)
+5. RHS: (n+1) * descFact(n,n-m) * coeff_n(g^m)
+6. Close via `Nat.succ_descFactorial_succ`: descFact(n+1,n+1-m) = (n+1) * descFact(n,n-m)
+
+### Next after lowering sorry
+
+Once `umbralPoly_lowering` is filled:
+- `umbralPoly_isBasicSequence` completes automatically
+- The CoalgHom property follows from `IsBasicSequence.isBinomialType`
+- Specific examples: Abel polynomials, Bernoulli, Stirling numbers as Jabotinsky matrix entries
 
 ### DONE: descPochhammer_isBinomialType (sorry removed)
 Proved by induction on n. The key insight was `summand_identity`: constant polynomials move freely between tensor factors via `TensorProduct.smul_tmul`, so the cross-terms `(↑x - ↑n) • p_x ⊗ q + p_x ⊗ ↑(n-x) • q` cancel via `Nat.cast_sub` + `add_smul`. Pascal's rule (`Nat.choose_succ_succ'`) + `Finset.sum_range_succ'` handle the reindexing. **No more `sorry` in the project.**
@@ -201,31 +293,150 @@ Formalized the polynomial-side theory of the umbral calculus:
 | `IsBasicSequence Q p` | DeltaOperator.lean | DONE — lowering + normalized + zero_one |
 | `X_pow_isBasicSequence` | DeltaOperator.lean | DONE — monomials basic for derivative |
 | `descPochhammer_isBasicSequence_forwardDiff` | DeltaOperator.lean | DONE — falling factorials basic for Δ₁ |
-| `IsBasicSequence.isBinomialType` | DeltaOperator.lean | SORRY — Rota's classification |
+| `IsBasicSequence.isBinomialType` | DeltaOperator.lean | DONE — Rota's classification |
 
-### NEXT: Lagrange inversion / compositional inverse (BLOCKS THE SORRY)
+### DONE: Lagrange inversion / compositional inverse (session 6)
 
-The `sorry` in `IsBasicSequence.isBinomialType` is the bridge between the polynomial side (delta operators) and the power series side (duality). Robin's thesis (lines 868-873) crosses this bridge via: delta series f → substitution algebra hom φ_f on R⟦X⟧ → adjoint U_f = coalgebra hom on R[X] → apply `comp_coalgebraHom` (already proved!). **Once we have compositional inverses, the sorry becomes trivial.**
+**File: `HopfAlgebras/LagrangeInversion.lean`** — created session 5, completed session 6.
 
-An alternative proof via the coderivation property `(Q ⊗ id) ∘ Δ = Δ ∘ Q` was investigated but requires tensor product ext lemmas + `[Infinite R]` and is harder than the duality approach.
+All sorry's in this file have been filled. This fills a known Mathlib gap (Q544292).
 
-**Situation**: Lagrange inversion is a known gap in Mathlib (tracked as Q544292 in 1000.yaml, no declaration). The substitution infrastructure exists (`PowerSeries.subst`, `substAlgHom`, `subst_comp_subst`, chain rule) but no compositional inverse.
+| Definition/Theorem | Status |
+|-------------------|--------|
+| `IsDeltaSeries f` | DONE — `constantCoeff f = 0 ∧ IsUnit (coeff 1 f)` |
+| `IsDeltaSeries.hasSubst` | DONE |
+| `IsDeltaSeries.unit` | DONE — extracts unit from `coeff 1 f` |
+| `compInvCoeff u_inv f : ℕ → R` | DONE — recursive coefficient construction |
+| `compInv f hf : R⟦X⟧` | DONE — wraps coefficients as power series |
+| `coeff_pow_eq_of_agree_lt` | DONE — agreement below n for d≥1 |
+| `coeff_pow_eq_of_agree` | DONE — agreement at n for d≥2 |
+| `subst_compInv` | **DONE** — right inverse: `f(g(x)) = x` |
+| `compInv_isDeltaSeries` | **DONE** — compositional inverse is a delta series |
+| `compInv_subst` | **DONE** — left inverse: `g(f(x)) = x` |
 
-**Two levels:**
-1. **Existence** (recursive coefficient construction) — only needs `a₁` unit, works over CommRing
-2. **Explicit formula** `[yⁿ] g = (1/n) [yⁿ⁻¹] (y/f(y))ⁿ` — needs CharZero / ℚ-algebra
+#### Proof techniques for `subst_compInv` (n ≥ 2 case)
 
-**Recommended scope:**
-1. Define `IsDeltaSeries f` on `R⟦X⟧`: `constantCoeff f = 0` and `IsUnit (coeff 1 f)`
-2. Construct the compositional inverse `g` by coefficient recursion using `PowerSeries.mk`
-3. Prove `subst g f = X` and `subst f g = X` (formal inverse)
-4. This would be a standalone Mathlib PR (filling a 1000-theorems gap!)
-5. Fill the sorry: construct the umbral operator as adjoint of substAlgHom, apply `comp_coalgebraHom`
+1. **Vanishing for d > n+2**: `le_order_pow_of_constantCoeff_eq_zero` + `coeff_of_lt_order` shows `coeff (n+2) (g^d) = 0` when `d > n+2` (imported `PowerSeries.Order`).
+2. **finsum → Finset.sum**: `finsum_eq_sum_of_support_subset` converts to sum over `range (n+3)`.
+3. **Sum splitting**: `Finset.sum_union` with `range(n+3) = {0} ∪ {1} ∪ Icc 2 (n+2)`.
+4. **Cancellation**: d=0 vanishes (hf0), d=1 gives `u * compInvCoeff`, Icc gives S.
+   The `gPartial_def` agreement lemma bridges `hb` (gPartial form) to S (g form).
+   Final: `u * (-u_inv * S) + S = -(u·u_inv) * S + S = -S + S = 0`.
 
-**Then connect both sides:**
-- Delta series f ↔ delta operator Q = f(D) ↔ basic sequence {p_n} ↔ umbral operator U
+#### Proof technique for `compInv_subst`
 
-### After: Specific examples
+Pure algebra — no coefficient computation needed:
+1. Show `compInv f hf` is itself a delta series (`compInv_isDeltaSeries`).
+2. Apply `subst_compInv` to get `g(compInv g) = X`.
+3. Use `subst_comp_subst_apply` (associativity): `compInv g (g(f)) = subst (compInv g ∘ g) f = subst X f = f`.
+   This gives `compInv g = f`.
+4. Therefore `g(f) = g(compInv g) = X`.
+
+Key helper: `subst_X_id : subst X p = p` — proved by dropping to `MvPowerSeries.subst_self` (Mathlib has no univariate version).
+
+### DONE: Rota's classification (sessions 6–8)
+
+`[Algebra ℚ R]` hypothesis. **All sorry's filled** (session 8):
+- `taylor_basic_eq` — by induction + `delta_ker_eval_zero` + absorption identity
+- `IsBasicSequence.isBinomialType` — bridge `lmul' ∘ (id ⊗ aeval(Ca)) ∘ Δ = taylor a` + tensor separation via `equivFinsuppOfBasisLeft`
+
+#### What's proved (session 7, all compiling)
+
+The entire infrastructure for the kernel lemma is done. The proof chain:
+
+| Lemma | Line | What it proves |
+|-------|------|----------------|
+| `instTorsionFree` | ~278 | `IsAddTorsionFree R` from `Algebra ℚ R` |
+| `taylor_invariant_eq_C` | ~282 | Shift-invariant polys are constant (induction on natDegree via derivative) |
+| `delta_op_Q_X_eq_C` | ~353 | Q(X) = C(u) for delta operators (from shift-equivariance) |
+| `coeff_taylor_sub_eq` | ~367 | Forward difference coefficient: `(taylor 1 g - g).coeff(d-1) = d * leadingCoeff g` |
+| `natDegree_le_pred` | ~366 | If natDegree ≤ n and coeff n = 0, then natDegree ≤ n-1 |
+| `natDegree_Q_of_bounded` | ~398 | Q applied to bounded-degree poly has bounded degree (monomial decomposition) |
+| `natDegree_delta_op_pow` | ~421 | `natDegree(Q(X^n)) ≤ n-1` (strong induction + contradiction via forward difference) |
+| `natDegree_taylor_sub_le` | ~488 | `natDegree(taylor a p - p) ≤ natDegree p - 1` |
+| `eval_determines` | ~500 | Eval at all points determines polynomial over ℚ-algebra (forward difference induction) |
+| `sum_hasseDeriv_eq_zero` | ~527 | Q(f) = 0 implies `Σ cₖ • hasseDeriv k f = 0` (Q is a series in Hasse derivatives) |
+| `delta_ker_eval_zero` | ~557 | **The kernel lemma**: Q(f) = 0 and f(0) = 0 implies f = 0 |
+
+**Key insight (Robin's observation)**: Q is a polynomial in d/dx, i.e., Q = Σ cₖ · hasseDeriv k where c₁ is a unit. The `sum_hasseDeriv_eq_zero` lemma formalizes this. The kernel proof extracts the coefficient at natDegree-1 using `Finset.sum_eq_single`, showing it equals `c₁ * d * leadingCoeff(f)` — a product of a unit, a positive integer, and a nonzero element, hence nonzero. Contradicts Q(f) = 0.
+
+#### What remains: `taylor_basic_eq` (the Taylor identity)
+
+Statement: `taylor a (p n) = Σ C(n,k) • (p k * C((p(n-k)).eval a))` for all n, a.
+
+**Proof by induction on n:**
+- Base n=0: `taylor a 1 = 1`. Compiles (just simp).
+- Inductive step: Let D = LHS - RHS. Show D = 0 via `delta_ker_eval_zero`.
+  - **D.eval 0 = 0**: LHS.eval 0 = (p(n+1)).eval a by `taylor_eval`. RHS.eval 0 = (p(n+1)).eval a because only k=0 term survives (normalization: (p k).eval 0 = 0 for k ≥ 1).
+  - **Q(D) = 0**: Q(LHS) = (n+1) • taylor a (p n) [shift-equivariance + lowering]. Q(RHS) = (n+1) • Σ C(n,j) • (p j * C((p(n-j)).eval a)) [absorption identity + reindexing]. By IH these are equal.
+
+**The remaining work is the Q(RHS) computation**: a Finset sum manipulation using:
+1. Linearity: `Q(Σ f_k) = Σ Q(f_k)` and `Q(r • p) = r • Q(p)`
+2. Scalar commutativity: `p k * C r = r • p k`
+3. Lowering: `Q(p k) = k • p(k-1)` for k ≥ 1, `Q(p 0) = 0`
+4. Absorption identity: `k • C(n+1,k) = (n+1) • C(n,k-1)` (Mathlib: `Nat.succ_mul_choose_eq`)
+5. Reindexing: shift the summation variable by 1
+
+Each step is individually simple but combining them in Lean requires careful `Finset.sum` manipulation. Expect ~40-60 lines of Lean tactic code.
+
+#### What remains: `isBinomialType` (Rota's theorem)
+
+Once `taylor_basic_eq` is done, `isBinomialType` follows by:
+
+1. **Bridge `comul_taylor`**: Show `(id ⊗ eval_a)(comul(p n)) = taylor a (p n)`. Both sides are algebra homs from R[X] sending X ↦ X + C a, so `algHom_ext` closes it. (Same technique as the existing coalgebra proofs in Umbral.lean.)
+
+2. **Tensor separation**: Show two elements of R[X] ⊗ R[X] are equal by applying `id ⊗ eval_a` for all a and using `eval_determines`. Specifically: if `(id ⊗ eval_a)(T₁) = (id ⊗ eval_a)(T₂)` for all a, then T₁ = T₂. This uses `eval_determines` (already proved) applied "column by column" in the tensor product.
+
+3. **Assembly**: `taylor_basic_eq` gives the eval identity, `comul_taylor` + tensor separation lift it to the comul identity.
+
+#### Lean patterns discovered in session 7
+
+- **`Nontrivial R` is NOT automatic from `Algebra ℚ R`** — derive via `subsingleton_or_nontrivial R`
+- **`natDegree_X_add_C` and `monic_X_add_C` need `[Nontrivial R]`**
+- **`Monic.natDegree_pow`** takes `p.Monic` (the base), not `(p^n).Monic` (the power)
+- **`degree_sub_lt`** needs explicit `@` to disambiguate which polynomial is `p` vs `q`
+- **`Finset.sum_eq_single`** is the cleanest way to isolate one term from a sum
+- **Distributing `coeff` through `Finset.sum`**: use `Finset.cons_induction` (no direct `sum_apply` for polynomials)
+- **`leadingCoeff_taylor`** is `@[simp]` — no extra hypotheses needed
+- **`taylor_coeff r f n`** — argument order is (r : R) (f : R[X]) (n : ℕ), NOT (n f r)
+- **`push_neg` is deprecated** — use `push Not`
+- **`as_sum_range' p N hN`** decomposes p into monomials using `monomial`; convert to smul via `← C_mul_X_pow_eq_monomial, ← smul_eq_C_mul`
+- **`Units.mul_right_eq_zero u`** gives `↑u * x = 0 ↔ x = 0` — cleaner than IsUnit API
+- **`nsmul_right_injective`** leaves goals in `(fun a => n • a) x = (fun a => n • a) 0` form; break out `have h2 : n • x = n • 0 := by rwa [smul_zero]` first
+
+### SUPERSEDED: previous Rota analysis
+
+This is the fundamental theorem of the umbral calculus: the basic sequence of any delta operator is of binomial type.
+
+**Why it's hard**: The standard proof (Roman, Rota) works over a field of characteristic 0. It requires:
+1. An exponential generating function `f_Q(y) = Σ (Q(X^n))(0) / n! · y^n` — needs division by n!
+2. The umbral operator as a coalgebra endomorphism via R[X] ↔ R⟦X⟧ duality
+3. Or: a direct proof that shift-equivariance implies `Q` is a "coderivation" of the coalgebra
+
+Over a general `CommRing R` (our current hypothesis), the theorem may require additional constraints (e.g., `Algebra ℚ R` or `CharZero R`).
+
+**Possible proof routes**:
+
+**Route A** (ℚ-algebra, via generating functions):
+1. Add `[Algebra ℚ R]` hypothesis
+2. Build `deltaSeriesOf Q : R⟦X⟧` using `Q(X^n)(0) / n!`
+3. Take compositional inverse `g = compInv (deltaSeriesOf Q)`
+4. Show the substitution map `p ↦ p(g(X))` is a coalgebra endomorphism of R[X]
+5. Show `g(X)^n = p_n` (the basic sequence)
+6. Apply `IsBinomialType.of_coalgebraHom`
+
+**Route B** (general ring, direct induction):
+1. Prove `Q` is a coderivation: `Δ ∘ Q = (Q ⊗ id + id ⊗ Q) ∘ Δ` + correction terms
+2. Double induction on n using the lowering property
+3. This is technically possible but painful, requiring tensor product ext lemmas
+
+**Route C** (avoid the theorem):
+1. Only prove binomial type for specific basic sequences (already done for monomials and falling factorials)
+2. Leave the general theorem as a sorry with proper documentation
+
+**Recommendation**: Route A is the most mathematically natural. Add `[Algebra ℚ R]` and build the generating function infrastructure. The Duality.lean file already has the R[X] ↔ R⟦X⟧ pairing that's needed.
+
+### After umbral operators: Specific examples
 - Falling factorials via the umbral operator for f(y) = e^y - 1
 - Abel polynomials, Bernoulli polynomials as binomial type sequences
 - Stirling numbers as change-of-basis coefficients
