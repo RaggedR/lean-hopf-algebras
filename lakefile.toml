@@ -19,3 +19,6 @@ name = "HopfAlgebras"
 
 [[lean_lib]]
 name = "Explore"
+
+[[lean_lib]]
+name = "Sabidussi"
