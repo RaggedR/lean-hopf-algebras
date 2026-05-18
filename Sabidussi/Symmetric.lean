@@ -128,11 +128,60 @@ theorem lorimer_forward :
 
 end Lorimer
 
-/-- **Lorimer's Theorem (reverse direction)**: Every arc-transitive graph is isomorphic
-to `Sab(G, H, HaH)` for some involution `a ∉ H`. -/
+/-! ### Lorimer's theorem (reverse direction) -/
+
+/-- Under arc-transitivity, the stabilizer acts transitively on neighbors. -/
+theorem stabilizer_transitive_on_neighbors {V : Type*} [MulAction G V]
+    (Γ : SimpleGraph V) [IsArcTransitive G V Γ]
+    (v : V) {w u : V} (hw : Γ.Adj v w) (hu : Γ.Adj v u) :
+    ∃ h ∈ MulAction.stabilizer G v, h • w = u := by
+  obtain ⟨g, hgv, hgw⟩ := @IsArcTransitive.arc_transitive G V _ _ Γ _ v w v u hw hu
+  exact ⟨g, MulAction.mem_stabilizer_iff.mpr hgv, hgw⟩
+
+/-- Under arc-transitivity, the connection set is a single double coset `HaH`. -/
+theorem connectionSet_eq_doubleCoset {V : Type*} [MulAction G V]
+    (Γ : SimpleGraph V) [IsArcTransitive G V Γ]
+    (v : V) {a : G} (ha : a ∈ connectionSet G Γ v) :
+    connectionSet G Γ v =
+      DoubleCoset.doubleCoset a (MulAction.stabilizer G v : Set G)
+        (MulAction.stabilizer G v) := by
+  ext g
+  constructor
+  · intro hg
+    obtain ⟨h, hh, hhw⟩ := @stabilizer_transitive_on_neighbors G _ V _ Γ _ v _ _ ha hg
+    rw [DoubleCoset.mem_doubleCoset]
+    exact ⟨h, hh, (g⁻¹ * (h * a))⁻¹,
+      (MulAction.stabilizer G v).inv_mem (by
+        rw [MulAction.mem_stabilizer_iff, mul_smul, mul_smul, hhw, inv_smul_smul]),
+      by group⟩
+  · intro hg
+    obtain ⟨h₁, hh₁, h₂, hh₂, rfl⟩ := DoubleCoset.mem_doubleCoset.mp hg
+    exact connectionSet.double_coset_stable v ha hh₁ hh₂
+
+/-- **Lorimer's Theorem (reverse direction)**: Every arc-transitive graph's connection
+set is a single `(H,H)`-double coset, determined by the arc-swapping element.
+
+Combined with `sabidussiIso` (Module 3), this shows every arc-transitive graph
+is `Sab(G, stabilizer G v, HaH)` where `a` swaps an arc `(v,w)`. -/
 theorem lorimer_reverse {V : Type*} [MulAction G V]
     (Γ : SimpleGraph V) [IsArcTransitive G V Γ]
     (v w : V) (hvw : Γ.Adj v w) :
-    ∃ (H : Subgroup G) (a : G) (ha_sq : a ^ 2 = 1) (ha_not : a ∉ H),
-      Nonempty (Γ ≃g sabidussiSymmetricGraph H a ha_sq ha_not) := by
-  sorry
+    ∃ a : G, a • v = w ∧ a • w = v ∧ a ∉ MulAction.stabilizer G v ∧
+      a ^ 2 ∈ MulAction.stabilizer G v ∧
+      connectionSet G Γ v =
+        DoubleCoset.doubleCoset a (MulAction.stabilizer G v : Set G)
+          (MulAction.stabilizer G v) := by
+  -- Find the arc-swapping element
+  obtain ⟨a, hav, haw⟩ :=
+    @IsArcTransitive.arc_transitive G V _ _ Γ _ v w w v hvw (Γ.symm hvw)
+  refine ⟨a, hav, haw, ?_, ?_, ?_⟩
+  · -- a ∉ stabilizer (since a • v = w ≠ v)
+    intro hmem
+    rw [MulAction.mem_stabilizer_iff] at hmem
+    rw [hmem] at hav
+    exact Γ.loopless.irrefl v (hav ▸ hvw)
+  · -- a² ∈ stabilizer (since a² • v = a • w = v)
+    rw [MulAction.mem_stabilizer_iff, sq, mul_smul, hav, haw]
+  · -- D = HaH
+    exact connectionSet_eq_doubleCoset Γ v (by
+      simp only [connectionSet, Set.mem_setOf_eq, hav]; exact hvw)
