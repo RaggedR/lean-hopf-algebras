@@ -1,10 +1,12 @@
-# Hopf Algebras, Umbral Calculus, and Symmetric Graphs in Lean 4
+# Hopf Algebras and the Umbral Calculus in Lean 4
 
-A formalization of the **umbral calculus** (Rota's finite operator calculus) and
-**Sabidussi's representation theorem** for vertex-transitive graphs, built on
+A formalization of the **umbral calculus** (Rota's finite operator calculus) built on
 [Mathlib](https://github.com/leanprover-community/mathlib4).
 
-**4,185 lines of Lean 4. Zero sorry's** (except 3 in an in-progress module).
+**3,449 lines of Lean 4. Zero sorry's** (except 3 in an in-progress module).
+
+See also: [lean-sabidussi](https://github.com/RaggedR/lean-sabidussi) — a separate
+formalization of Sabidussi's representation theorem for vertex-transitive graphs.
 
 ## What's here
 
@@ -43,19 +45,6 @@ via Jabotinsky duality.
 | `Composition.lean` | Compositional inverse relationship between exp and log as formal power series: `log(exp(X)) = X`. |
 | `Transfer.lean` | The transfer formula: expanding one basic sequence in another. Basic sequences form a basis (degree n, unit leading coefficient). *In progress: 3 sorry's.* |
 
-### Sabidussi's Representation Theorem and Lorimer's Theorem
-
-A formalization of the theory of symmetric (arc-transitive) graphs from
-[arXiv:1306.4798](https://arxiv.org/abs/1306.4798).
-
-| File | Content |
-|------|---------|
-| `GraphAction.lean` | Group actions on simple graphs. `GraphAction`, `IsVertexTransitive`, `IsArcTransitive`. Vertex-transitive + locally transitive implies arc-transitive. |
-| `CosetGraph.lean` | Sabidussi's coset graph construction `Sab(G, H, D)` with connection set axioms (double-coset stable, symmetric, disjoint from H). Coset graphs are vertex-transitive. |
-| `Representation.lean` | **Sabidussi's representation theorem**: every vertex-transitive graph is isomorphic to a coset graph. The orbit-stabilizer equivalence is a graph isomorphism. |
-| `Symmetric.lean` | **Lorimer's theorem** (forward): `Sab(G, H, HaH)` is arc-transitive when `a` is an involution not in `H`. (Reverse): arc-transitive graphs have a single double coset. |
-| `Quotient.lean` | **Lorimer's quotient theorem**: the quotient of `Sab(G, H, D)` by a G-invariant partition is `Sab(G, K, KDK)`. |
-
 ## Relationship to Mathlib
 
 Three components have been submitted as standalone Mathlib PRs:
@@ -66,15 +55,13 @@ Three components have been submitted as standalone Mathlib PRs:
 
 This repository contains the complete standalone formalization, including the
 parts that depend on all three PRs together (Rota's classification, the transfer
-formula, Sabidussi theory).
+formula).
 
 ## References
 
 - Langer, R., *Determinantal bases and the symmetric group*, [arXiv:0907.3950](https://arxiv.org/abs/0907.3950)
-- Langer, R., *Symmetric Graphs and their Quotients*, [arXiv:1306.4798](https://arxiv.org/abs/1306.4798)
 - Roman, S., *The Umbral Calculus*, Academic Press, 1984
 - Rota, G.-C., Kahaner, D., Odlyzko, A., *Finite Operator Calculus*, JMAA 42 (1973)
-- Sabidussi, G., *Vertex-transitive graphs*, Monatsh. Math. 68 (1964), 426-438
 
 ## Building
 
