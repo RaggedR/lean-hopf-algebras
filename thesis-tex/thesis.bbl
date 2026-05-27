@@ -1,0 +1,198 @@
+\providecommand{\bysame}{\leavevmode\hbox to3em{\hrulefill}\thinspace}
+\renewcommand\MR[1]{\relax\ifhmode\unskip\spacefactor3000
+  \space\fi\MRhref{#1}{#1}}
+\renewcommand{\MRhref}[2]{\def\gloops##1
+  ##2){##1}\href{http://www.ams.org/mathscinet-getitem?mr=\gloops#1}{#2}}
+\providecommand{\href}[2]{#2}
+\begin{thebibliography}{10}
+
+\bibitem{SPECIES}
+F.~Bergeron, \emph{Combinatorial species and tree-like structures}, Cambridge
+  University Press, 1998.
+
+\bibitem{BERG}
+\bysame, \emph{Combinatoire alg\'ebrique},  (2001),
+  \\\url{http://bergeron.math.uqam.ca/Algebraic\_Combinatorics/notes.pdf}.
+
+\bibitem{BOWMAN}
+Douglas Bowman, \emph{$q$-difference operators, orthogonal polynomials, and
+  symmetric expansions}, Memoirs of the American Mathematical Society Number
+  757 (2002).
+
+\bibitem{CHEN2}
+W.Y.C. Chen, \emph{Compositional calculus}, Journal of Combinatorial Theory,
+  Series A \textbf{64} (1993), 149--188.
+
+\bibitem{CHEN1}
+\bysame, \emph{The theory of compositionals}, Discrete Mathematics \textbf{122}
+  (1993), 59 -- 87.
+
+\bibitem{UMBSURV1}
+A.~Di~Bucchianico and D.~Loeb, \emph{A selected survey of the umbral calculus},
+  Elec. J. Combin \textbf{3} (1995).
+
+\bibitem{FOAT}
+D.~Foata and G.N. Han, \emph{The $q$-series in combinatorics; permutation
+  statistics (preliminary version)},  (2004),
+  \\\url{http://www-irma.u-strasbg.fr/~foata/paper/qseriescom.pdf}.
+
+\bibitem{BLUE}
+W.~Fulton, \emph{Young tableaux}, Cambridge University Press, 1997.
+
+\bibitem{EXPOSE}
+A.M. Garsia, \emph{An expos\'{e} of the {M}ullin--{R}ota theory of polynomials
+  of binomial type}, Linear and Multilinear Algebra \textbf{1} (1973), 47 --
+  65.
+
+\bibitem{GARSIA2}
+A.M. Garsia, M.~Haiman, and G.~M.~Tesler, \emph{Explicit plethystic formulas
+  for {M}acdonald {$q,t$}-kostka coefficients}, S\'eminaire Lotharingien de
+  Combinatoire \textbf{42} (1999), B42m,
+  \\\url{http://www.mat.univie.ac.at/~slc/wpapers/s42garsia.html}.
+
+\bibitem{UMBLAG}
+A.M. Garsia and S.A. Joni, \emph{A new expression for umbral operators and
+  power series inversion}, Proceedings of the American Mathematical Society
+  volume 64 (1977), 179--185.
+
+\bibitem{COMPSEQ}
+\bysame, \emph{Composition sequences}, Communications in Algebra (1980),
+  1187--1215.
+
+\bibitem{GARSIA1}
+A.M. Garsia and G.~Tesler, \emph{Plethystic formulas for {M}acdonald
+  {$q,t$}-{K}ostka coefficients}, Advances in Mathematics \textbf{123} (1996),
+  no.~2, 144--222.
+
+\bibitem{HYPGEOM}
+G.~Gasper and M.~Rahman, \emph{Basic hypergeometric series}, Cambridge
+  University Press, 2004.
+
+\bibitem{GESSUMB}
+I.M. Gessel, \emph{Applications of the classical umbral calculus}, Universalis
+  49, 8. (2003), 397--434.
+
+\bibitem{ANDREWS}
+J.~Goldman and G.~C Rota, \emph{On the foundations of combinatorial theory {V}:
+  Eulerian differential operators}, Studies in Applied Mathematics (1971).
+
+\bibitem{LIN}
+K.~Hoffman and R.~Kunze, \emph{Linear algebra. second edition}, Prentice Hill,
+  1971.
+
+\bibitem{QUMBRAL}
+E.~Ihrig and M.E.H. Ismail, \emph{A $q$-umbral calculus}, J. Math. Anal. Appl.
+  \textbf{84} (1981), 178--207.
+
+\bibitem{ROTA-COALG1}
+S.A. Joni and G.C. Rota, \emph{Coalgebras and bialgebras in combinatorics},
+  Studies in Applied Mathematics \textbf{61} (1979), 93.
+
+\bibitem{KAC}
+V.~Kac and P.~Cheung, \emph{Quantum calculus}, New York, Springer, 2002.
+
+\bibitem{KAWANAKA}
+N.~Kawanaka, \emph{A q-series identity involving {S}chur functions and related
+  topics}, Osaka. J. Math \textbf{36} (1999), 157--176.
+
+\bibitem{KNUTSON}
+D.~Knutson, \emph{Lambda rings and the representation theory of the symmetric
+  group}, Lecture Notes in Mathematics, 308 (1973).
+
+\bibitem{COLROT}
+J.P.S. Kung, \emph{{G}ian-{C}arlo {R}ota on combinatorics: Introductory papers
+  and commentaries}, Birkha\"{u}ser Boston, 1995.
+
+\bibitem{LASCOUX}
+A.~Lascoux, \emph{Symmetric functions and combinatorial operators on
+  polynomials}, Regional Conference Series in Mathematics Number 99, 2001.
+
+\bibitem{UMBSURV2}
+D.~Loeb and G.-C. Rota, \emph{Recent contributions to the calculus of finite
+  differences: a survey}, Geometry and complex variables ({B}ologna,
+  1988/1990), Lecture Notes in Pure and Appl. Math., vol. 132, Dekker, New
+  York, 1991, pp.~239--276,
+  \href{http://arxiv.org/abs/math/9502210}{\path{arXiv:math/9502210}}.
+
+\bibitem{LOEB}
+D.E. Loeb, \emph{Sequences of symmetric functions of binomial type}, Stud.
+  Appl. Math. \textbf{83} (1990), no.~1, 1--30,
+  \href{http://arxiv.org/abs/math/9502221}{\path{arXiv:math/9502221}}.
+
+\bibitem{KAWAHALL}
+J.~Zeng M.~Ishikawa, F.~Jouhet, \emph{A generalization of {K}awanaka's
+  conjecture for {H}all-{L}ittlewood polynomials and applications}, Journal
+  Algebraic. Combin. No 4 \textbf{23} (2006), 395--412.
+
+\bibitem{MAC}
+I.G. Macdonald, \emph{A new class of symmetric functions}, S\'eminaire
+  Lotharingien \textbf{20} (1988), B20a,
+  \\\url{http://www.mat.univie.ac.at/~slc/opapers/s20macdonald.html}.
+
+\bibitem{BLACK}
+\bysame, \emph{Symmetric functions and {H}all polynomials. second edition},
+  Oxford University Press, 1995.
+
+\bibitem{MANIVEL}
+L.~Manivel, \emph{Symmetric functions, {S}chubert polynomials and degeneracy
+  loci}, SMF/AMS Texts and Monographs Volume 6, 1998.
+
+\bibitem{COMBSYM1}
+M.~Mendez, \emph{Multiset and the combinatorics of symmetric functions},
+  Advances in Mathematics \textbf{102} (1993), 95--175.
+
+\bibitem{MENDEZ}
+M.A. Mendez, \emph{The umbral calculus of symmetric functions}, Advances in
+  Mathematics \textbf{124} (1996), 207 -- 271.
+
+\bibitem{ROTA}
+R.~Mullin and G.C. Rota, \emph{On the foundations of combinatorial theory
+  {III}: Theory of binomial enumeration}, Graph Theory and its Applications B
+  (1970), 167--213.
+
+\bibitem{KEVIN}
+K.~Purbhoo, \emph{Puzzles, tableaux, and mosaics},  (2007),
+  \href{http://arxiv.org/abs/math/0705.1184v1}{\path{arXiv:math/0705.1184v1}}.
+
+\bibitem{WARNAAR}
+O.~Warnaar R.~Langer, M.J.~Schlosser, \emph{Theta functions, elliptic
+  hypergeometric series and {K}awanaka's macdonald polynomial conjecture}, to
+  appear...
+
+\bibitem{RAM}
+A.~Ram, \emph{Quantum groups: A survey of definitions, motvations and results},
+   (1997),
+  \\\url{http://www.math.wisc.edu/~ram/pub/1997AustMSLectNotesv11p20.pdf}.
+
+\bibitem{QROMAN}
+S.~Roman, \emph{More on the umbral calculus, with emphasis on q-umbral
+  calculus}, Journal of Mathematical Analysis and Applications \textbf{107}
+  (1985), 222 -- 254.
+
+\bibitem{ROMAN}
+\bysame, \emph{The umbral calculus}, Academic Press, 2004.
+
+\bibitem{ROTA-COALG2}
+G.C. Rota, \emph{Hopf algebra methods in combinatorics}, Reprinted in his
+  selected works.
+
+\bibitem{FINOP}
+\bysame, \emph{Finite operator calculus}, Academic Press, New York, 1975.
+
+\bibitem{SAGAN}
+B.~Sagan, \emph{The symmetric group}, Springer, 2001.
+
+\bibitem{STANLEY}
+R.~Stanley, \emph{Enumerative combinatorics volume 2}, Cambridge University
+  Press, 1997.
+
+\bibitem{ZABROCKI}
+M.~Zabrocki, \emph{q-analogs of symmetric function operators}, Discrete
+  Mathematics, Volume 256, Number 3 (2002), 831--853,
+  \href{http://arxiv.org/abs/math/0008188v2}{\path{arXiv:math/0008188v2}}.
+
+\bibitem{ZINN}
+P.~Zinn-Justin, \emph{{L}ittlewood--{R}ichardson coefficients and integrable
+  tilings}, Electron. J. Combin. \textbf{16} (2009), Research Paper 12.
+
+\end{thebibliography}
