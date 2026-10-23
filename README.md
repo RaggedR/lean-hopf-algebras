@@ -1,9 +1,21 @@
 # Hopf Algebras and the Umbral Calculus in Lean 4
 
+[![Lean CI](https://github.com/RaggedR/lean-hopf-algebras/actions/workflows/lean_action_ci.yml/badge.svg)](https://github.com/RaggedR/lean-hopf-algebras/actions/workflows/lean_action_ci.yml)
+
 A formalization of the **umbral calculus** (Rota's finite operator calculus) built on
 [Mathlib](https://github.com/leanprover-community/mathlib4).
 
 **3,449 lines of Lean 4. Zero sorry's** (except 3 in an in-progress module).
+
+> **Green = machine-checked, no `sorry`.** CI builds the library and runs
+> `#print axioms` on five headline results — the additive (𝔾ₐ) bialgebra structure
+> on `R[X]`, the derivative as a delta operator, `Xⁿ` and the descending Pochhammer
+> as sequences of binomial type, and the compositional inverse via Lagrange
+> inversion — each reducing to only Lean's foundational axioms. The three `sorry`s
+> live in the in-progress `HopfAlgebras/Transfer.lean` (`IsBasicSequence.natDegree_eq`
+> and two companions, pending a degree-drop lemma currently private in Mathlib);
+> that module is **not** reached by the certified results' dependency trees, so this
+> is an honest *partial* certification, not a claim over the whole repository.
 
 See also: [lean-sabidussi](https://github.com/RaggedR/lean-sabidussi) — a separate
 formalization of Sabidussi's representation theorem for vertex-transitive graphs.

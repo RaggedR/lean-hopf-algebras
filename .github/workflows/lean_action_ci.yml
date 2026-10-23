@@ -5,11 +5,8 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read # Read access to repository contents
-  pages: write # Write access to GitHub Pages
-  id-token: write # Write access to ID tokens
+  contents: read
 
 jobs:
   build:
@@ -17,5 +14,26 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+
+      # Builds the `HopfAlgebras` library (the default target: the seven modules
+      # the root imports). Fetches the Mathlib olean cache first.
       - uses: leanprover/lean-action@v1
-      - uses: leanprover-community/docgen-action@v1
+
+      # Certification: no `sorry` reaches any headline result.
+      # Default shell is `bash -eo pipefail`, so a Lean elaboration error (e.g. an
+      # unresolved name) fails the step on its own. We also fail on `sorryAx`, and
+      # — to defeat a vacuous pass — require a report for each headline result.
+      - name: Axiom certification (no sorry reaches the headline results)
+        run: |
+          lake env lean Certify.lean 2>&1 | tee axioms.txt
+          if grep -q "sorryAx" axioms.txt; then
+            echo "::error::sorryAx reached a headline result — certification failed"
+            exit 1
+          fi
+          for t in Polynomial.additiveBialgebra Polynomial.derivative_isDeltaOperator Polynomial.X_pow_isBinomialType Polynomial.descPochhammer_isBinomialType PowerSeries.compInv_subst; do
+            if ! grep -q "'$t' depends on axioms" axioms.txt; then
+              echo "::error::no axiom report for '$t' — name did not resolve (vacuous certification)"
+              exit 1
+            fi
+          done
+          echo "Certified: all headline results proved with no sorry (Transfer.lean is out of scope — stated only)."
